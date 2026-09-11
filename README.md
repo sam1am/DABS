@@ -8,7 +8,9 @@ until you unmask Baron Von Brewster and stop Operation Last Call.
 
 ## Play
 
-Open `index.html` in any modern browser (no build step, no dependencies). For the best
+**Play it now:** https://sam1am.github.io/DABS/
+
+Or run it locally: open `index.html` in any modern browser (no build step, no dependencies). For the best
 experience serve the folder over HTTP:
 
 ```
