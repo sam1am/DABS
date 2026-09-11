@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>DABS sim</title>
+<style>body{background:#111;color:#0f0;font:13px monospace;margin:0} #log{white-space:pre-wrap;padding:8px} canvas{width:320px;height:180px;display:block}</style>
+</head>
+<body>
+<div id="wrap" style="position:static;display:block"><canvas id="game" width="1280" height="720"></canvas></div>
+<div id="err"></div>
+<div id="log"></div>
+<script>window.addEventListener("error",function(e){var d=document.getElementById("log");d.textContent+="EARLY ERROR "+e.message+" @ "+String(e.filename).split("/").pop()+":"+e.lineno+"\n";try{var x=new XMLHttpRequest();x.open("GET","/SIMLOG/"+encodeURIComponent("EARLY ERROR "+e.message+" "+String(e.filename).split("/").pop()+":"+e.lineno),false);x.send();}catch(_){}});</script>
+<script src="../js/util.js"></script>
+<script>DABS.NO_AUTOLOOP = true;</script>
+<script src="../js/input.js"></script><script src="../js/save.js"></script><script src="../js/audio.js"></script><script src="../js/gfx.js"></script><script src="../js/ui.js"></script><script src="../js/data.js"></script>
+<script src="../js/scenes/title.js"></script><script src="../js/scenes/story.js"></script><script src="../js/scenes/hq.js"></script><script src="../js/scenes/city.js"></script><script src="../js/scenes/rappel.js"></script><script src="../js/scenes/bar.js"></script><script src="../js/scenes/boss.js"></script><script src="../js/scenes/results.js"></script><script src="../js/scenes/ending.js"></script>
+<script src="../js/main.js"></script>
+<script>
+window.SIMLOG = (m) => log(m); const LOG = []; const logEl = document.getElementById('log');
+function log(m) { LOG.push(m); logEl.textContent += m + '\n'; try { const x = new XMLHttpRequest(); x.open('GET', '/SIMLOG/' + encodeURIComponent(m).slice(0, 900), false); x.send(); } catch (e) {} }
+window.addEventListener('error', e => log('ERROR ' + e.message + ' @ ' + String(e.filename).split('/').pop() + ':' + e.lineno));
+const I = DABS.input, game = DABS.game, S = DABS.save;
+function press(code) { I.pressed[code] = true; I.down[code] = true; }
+function release(code) { I.down[code] = false; }
+function step(n, fn) { for (let i = 0; i < n; i++) { if (fn) fn(i); try { game.frame(1 / 60); } catch (e) { log('FRAME ERROR in ' + game.sceneName + ': ' + (e.message + ' :: ' + (e.stack || '')).split('\n').slice(0, 3).join(' | ')); return false; } } return true; }
+function until(pred, max, fn) { for (let i = 0; i < max; i++) { if (pred()) return true; if (fn) fn(i); try { game.frame(1 / 60); } catch (e) { log('FRAME ERROR in ' + game.sceneName + ': ' + (e.message + ' :: ' + (e.stack || '')).split('\n').slice(0, 3).join(' | ')); return false; } } return pred(); }
+function goto(name, params) { game.fade.cb = null; game.createScene(name, params); game.fade.a = 0; game.fade.dir = 0; }
+function scene() { return game.scene; }
+try {
+  localStorage.clear(); game.init(); game.fade.a = 0; game.fade.dir = 0; log('init ok, scene=' + game.sceneName);
+  if (location.search.includes('hqonly')) { goto('hq', {}); step(5); log('hq tab=' + scene().tab); press('Digit2'); log('pressed=' + JSON.stringify(I.pressed) + ' digit=' + I.digit()); step(1); log('after 1 frame tab=' + scene().tab + ' scene=' + game.sceneName); S.profile.money = 5000; scene().buildContent(); press('Enter'); step(2); log('upgrades=' + JSON.stringify(S.profile.upgrades)); throw new Error('hqonly stop'); }
+  // title menu -> new game -> story
+  step(30); press('Enter'); step(120); log('after Enter: ' + game.sceneName);
+  until(() => game.sceneName === 'story', 200); if (game.sceneName === 'story') { for (let k = 0; k < 12; k++) { press('Space'); step(5); } until(() => game.sceneName !== 'story', 400, () => { press('Space'); }); }
+  log('after story: ' + game.sceneName);
+  // HQ: deploy
+  goto('hq', {}); step(10); press('KeyE'); until(() => game.sceneName !== 'hq', 300, (i) => { if (i % 40 === 0) press('Space'); }); log('after deploy: ' + game.sceneName);
+  if (game.sceneName === 'story') until(() => game.sceneName === 'city', 600, () => press('Space'));
+  log('city? ' + game.sceneName);
+  // City: fly right for a while, fire cannon, then over bar 0
+  let ok = step(600, (i) => { I.down.KeyD = true; if (i % 30 === 0) press('Space'); if (i % 100 < 50) I.down.KeyW = true; else { I.down.KeyW = false; I.down.KeyS = (i % 100 > 70); } }); I.down.KeyD = false; I.down.KeyW = false; I.down.KeyS = false;
+  const c = scene(); log('city flight ok=' + ok + ' blimp.x=' + Math.round(c.blimp.x) + ' hp=' + c.blimp.hp + ' pigeons=' + c.pigeons.length + ' folders=' + c.folders.filter(f => f.got).length);
+  // force hazards
+  c.D.hazards.drones = 1; c.D.hazards.choppers = 1; c.D.hazards.fireworks = 1; c.D.hazards.storm = 1; c.droneT = 0; c.chopperT = 0; c.fwT = 0; c.stormT = 0; c.spawnDrone({ l: c.cam.x - 100, r: c.cam.x + 1380 });
+  ok = step(900, (i) => { if (i % 10 === 0) press('Space'); I.down.KeyA = (i % 120) < 60; I.down.KeyD = !I.down.KeyA; }); I.down.KeyA = false; I.down.KeyD = false;
+  log('hazards ok=' + ok + ' hp=' + Math.round(c.blimp.hp) + ' drones=' + c.drones.length + ' choppers=' + c.choppers.length + ' crashes=' + S.profile.stats.crashes);
+  // crash test
+  c.blimp.hp = 1; c.damage(50, 'test'); ok = step(400); log('crash ok=' + ok + ' crashes=' + S.profile.stats.crashes + ' hp=' + c.blimp.hp);
+  // move over bar 0 and rappel
+  const bb = c.barBuildings[0]; c.blimp.x = bb.x + bb.w / 2; c.blimp.y = 200; c.blimp.vx = 0; step(5); press('KeyE'); until(() => game.sceneName === 'rappel', 60); log('rappel? ' + game.sceneName);
+  // Rappel: descend
+  const r = scene(); ok = until(() => r.state === 'align', 3000, (i) => { I.down.KeyS = true; I.down.KeyA = (i % 40) < 20; I.down.KeyD = !I.down.KeyA; }); I.down.KeyS = false; I.down.KeyA = false; I.down.KeyD = false;
+  log('rappel align ok=' + ok + ' hits=' + r.agent.hits + ' time=' + r.timer.toFixed(1));
+  r.agent.x = r.windowX + 60; press('Space'); step(5); log('bonk hits=' + r.agent.hits);
+  r.agent.x = r.windowX; press('Space'); until(() => game.sceneName === 'bar', 200); log('bar? ' + game.sceneName + ' entry=' + (scene().entry));
+  // Bar inspection: exercise logic
+  const b = scene(); log('bar: patrons=' + b.patrons.length + ' viol=' + b.violations.join(',') + ' total=' + b.total + ' counter=' + JSON.stringify(b.counter) + ' roomW=' + b.roomW);
+  step(100);
+  // wrong cite first patron with no violations -> complaint
+  const innocent = b.patrons.find(p => !p.viol.length && p.state === 'idle');
+  if (innocent) { b.agent.x = innocent.x; step(2); press('KeyE'); step(2); log('panel open=' + !!b.panel); press('Digit1'); step(2); until(() => b.panel && b.panel.mode === 'main' && innocent.idKnown, 200); log('id checked: ' + innocent.idText); press('Digit2'); step(2); press('Digit3'); step(2); log('complaints=' + b.complaints + ' panel=' + !!b.panel); }
+  // cite all guilty patrons properly
+  for (const p of b.patrons) { if (!p.viol.length) continue; if (p.state !== 'idle') continue; b.agent.x = p.x; step(2); press('KeyE'); step(2); if (!b.panel) { log('no panel for ' + p.name + ' state=' + p.state); continue; } if (b.panel.target.p !== p) { log('WRONG TARGET for ' + p.name + ': ' + b.panel.target.kind + ' bartender.x=' + Math.round(b.bartender.x) + ' p.x=' + p.x); press('Escape'); step(2); continue; } if (!p.idKnown && b.panel.mode === 'main') { press('Digit1'); step(2); until(() => !b.panel || b.panel.mode !== 'checking', 200); } if (!b.panel) { log('panel closed during id (flee?) ' + p.state); continue; } press('Digit2'); step(2); log('  after D2: panel=' + !!b.panel + ' mode=' + (b.panel && b.panel.mode) + ' keys=' + (b.panelMenu ? b.panelMenu.buttons.map(x => x.o.key + ':' + x.label + (x.enabled ? '' : '(dis)')).join('|') : 'none')); const list = DABS.data.PATRON_CITES.filter(v => v !== 'ON_DUTY' || p.staff); const idx = list.indexOf(p.viol[0]); press('Digit' + (idx + 1)); log('  pressing Digit' + (idx + 1) + ' pressed=' + JSON.stringify(I.pressed)); step(1); log('  after: panel=' + !!b.panel + ' mode=' + (b.panel && b.panel.mode) + ' cited=' + p.cited.join(',')); step(2); log('cited ' + p.name + ' ' + p.viol[0] + ' -> state=' + p.state + ' caught=' + b.caught.length + ' score=' + b.score); if (p.state === 'fleeing') { until(() => p.state !== 'fleeing', 600, (i) => { I.down.ShiftLeft = true; I.down.KeyD = b.agent.x < p.x; b.agent.facing = 1; if (Math.abs(p.x - b.agent.x) < 80) press('Space'); }); I.down.ShiftLeft = false; I.down.KeyD = false; log('chase result: ' + p.state + ' tackles=' + b.tackles + ' escapes=' + b.escapes); } }
+  // bartender
+  const bt = b.bartender; log('bartender lax=' + bt.lax + ' drinks=' + bt.drinks + ' viol=' + bt.viol.join(','));
+  if (bt.lax) { until(() => bt.evidence > 0 || b.done, 1500); log('evidence=' + bt.evidence.toFixed(1) + ' done=' + b.done); if (bt.evidence > 0) { b.agent.x = bt.x; I.down.ArrowUp = true; step(2); press('KeyE'); step(2); I.down.ArrowUp = false; log('bt panel=' + !!b.panel); press('Digit1'); step(2); press('Digit1'); step(3); log('bt cited: ' + bt.cited.join(',') + ' caught=' + b.caught.length); } }
+  if (bt.drinks && !bt.cited.includes('ON_DUTY') && !b.done) { b.agent.x = bt.x; I.down.ArrowUp = true; step(2); press('KeyE'); step(2); I.down.ArrowUp = false; press('Digit1'); step(2); press('Digit2'); step(3); log('bt on duty cited: ' + bt.cited.join(',')); }
+  for (const o of b.objects) { if (b.done) break; log('object ' + o.type + ' guilty=' + o.guilty); if (!o.guilty) continue; b.agent.x = o.x; I.down.ArrowUp = true; step(2); press('KeyE'); step(2); I.down.ArrowUp = false; press('Digit1'); step(3); log('obj cited=' + o.cited + ' caught=' + b.caught.length); }
+  log('bar caught=' + b.caught.length + '/' + b.total + ' done=' + b.done + ' timeLeft=' + b.timeLeft.toFixed(1));
+  until(() => game.sceneName === 'results', 5000); log('results? ' + game.sceneName + ' rank=' + (scene().p && scene().p.rank) + ' money=' + S.profile.money);
+  step(300); press('Digit1'); until(() => game.sceneName === 'city', 200); log('back to city: ' + game.sceneName + ' busted=' + S.bar('sudsrow', 0).busted);
+  // run through the rest via forced results to unlock boss
+  for (let i = 1; i < 4; i++) { const bs = S.bar('sudsrow', i); bs.busted = true; bs.best = 'silver'; }
+  goto('city', { district: 0, fromBar: 0 }); step(30); log('boss unlocked=' + game.bossUnlocked(DABS.data.DISTRICTS[0]) + ' near=' + JSON.stringify(scene().near_));
+  const cc = scene(); cc.blimp.x = cc.bossBuilding.x + cc.bossBuilding.w / 2; cc.blimp.y = 200; step(3); log('near boss=' + (cc.near_ && cc.near_.type)); press('KeyE'); until(() => game.sceneName === 'rappel', 60); log('rappel boss? ' + game.sceneName);
+  goto('boss', { district: 0, entry: 'good' }); const bo = scene(); for (let k = 0; k < 4; k++) { press('Space'); step(10); } log('boss state=' + bo.boss.state);
+  ok = step(1500, (i) => { I.down.KeyA = (i % 90) < 45; I.down.KeyD = !I.down.KeyA; if (i % 25 === 0) press('KeyW'); if (i % 8 === 0) press('Space'); }); I.down.KeyA = false; I.down.KeyD = false;
+  log('boss fight ok=' + ok + ' hp=' + bo.boss.hp + '/' + bo.boss.maxHp + ' hearts=' + bo.agent.hearts + ' hazards=' + bo.hazards.length + ' phase=' + bo.boss.phase + ' state=' + bo.boss.state);
+  if (bo.boss.state === 'fight') { bo.boss.hp = 1; bo.agent.x = bo.boss.x - 150; bo.agent.facing = 1; until(() => bo.boss.state !== 'fight', 600, (i) => { if (i % 6 === 0) press('Space'); }); }
+  log('boss end state=' + bo.boss.state); until(() => game.sceneName === 'results', 600); log('boss results? ' + game.sceneName + ' won=' + (scene().p && scene().p.won)); step(300); press('Digit1'); until(() => game.sceneName === 'story', 200); log('debrief? ' + game.sceneName);
+  until(() => game.sceneName === 'hq', 800, () => press('Space')); log('hq? ' + game.sceneName + ' d2 unlocked=' + game.districtUnlocked(1) + ' money=' + S.profile.money);
+  // HQ buy upgrade
+  const h = scene(); press('Digit2'); step(3); log('tab=' + h.tab + ' same=' + (h === game.scene) + ' scene=' + game.sceneName + ' paused=' + game.paused + ' fadecb=' + !!game.fade.cb + ' curtab=' + game.scene.tab); S.profile.money = 5000; h.buildContent(); press('Enter'); step(3); log('upgrades=' + JSON.stringify(S.profile.upgrades) + ' money=' + S.profile.money);
+  press('Digit3'); step(3); press('Digit4'); step(3); press('Digit1'); step(3); if (location.search.includes('quick')) throw new Error('quick stop');
+  // test other districts' bars & bosses quickly
+  if (!location.search.includes('late')) for (let d = 1; d < 6; d++) { for (let bi = 0; bi < 2; bi++) { goto('bar', { district: d, bar: bi, entry: 'good' }); const bs = scene(); ok = step(200, (i) => { I.down.KeyD = (i % 60) < 30; I.down.KeyA = !I.down.KeyD; if (i % 50 === 0) press('KeyE'); if (i % 50 === 10) press('Digit1'); if (i % 50 === 30) press('Digit2'); if (i % 50 === 40) press('Digit1'); }); I.down.KeyA = false; I.down.KeyD = false; log('bar d' + d + ' b' + bi + ' ok=' + ok + ' viol=' + bs.violations.join(',') + ' patrons=' + bs.patrons.length + ' objs=' + bs.objects.map(o => o.type + (o.guilty ? '!' : '')).join(',')); } goto('boss', { district: d, entry: 'good' }); const bz = scene(); for (let k = 0; k < 4; k++) { press('Space'); step(10); } bz.boss.hp = Math.ceil(bz.boss.maxHp * 0.3); ok = step(900, (i) => { I.down.KeyA = (i % 90) < 45; I.down.KeyD = !I.down.KeyA; if (i % 25 === 0) press('KeyW'); if (i % 8 === 0) press('Space'); }); I.down.KeyA = false; I.down.KeyD = false; log('boss d' + d + ' ok=' + ok + ' phase=' + bz.boss.phase + ' hazards=' + bz.hazards.length + ' hearts=' + bz.agent.hearts + ' state=' + bz.boss.state); }
+  // rappel in later districts
+  for (let d = 2; d < 6; d += 3) { goto('rappel', { district: d, bar: 1 }); const rr = scene(); ok = until(() => rr.state === 'align', 3000, (i) => { I.down.KeyS = true; I.down.KeyA = (i % 40) < 20; I.down.KeyD = !I.down.KeyA; }); I.down.KeyS = false; I.down.KeyA = false; I.down.KeyD = false; log('rappel d' + d + ' ok=' + ok + ' hits=' + rr.agent.hits); }
+  // final district city with zeppelin
+  for (let i = 0; i < 6; i++) { const bs = S.bar('distillery', i); bs.busted = true; } S.district('distillery').unlocked = true;
+  goto('city', { district: 5 }); const fc = scene(); log('zep=' + !!fc.zep); if (fc.zep) { fc.blimp.x = fc.zep.x - 300; fc.blimp.y = fc.zep.y; ok = step(600, (i) => { if (i % 6 === 0) press('Space'); fc.blimp.x = fc.zep.x - 330; fc.blimp.y = fc.zep.y + 60; fc.blimp.dir = 1; }); log('zep fight ok=' + ok + ' engines=' + fc.zep.engines.map(e => e.hp).join(',') + ' stalled=' + fc.zep.stalled + ' hp=' + Math.round(fc.blimp.hp)); fc.zep.engines.forEach(e => e.hp = 0); fc.zep.stalled = true; step(120); fc.blimp.x = fc.zep.x; fc.blimp.y = fc.zep.y - 100; step(3); log('near=' + (fc.near_ && fc.near_.type)); press('KeyE'); until(() => game.sceneName === 'rappel', 60); log('airship rappel? ' + game.sceneName + ' airship=' + scene().airship); }
+  goto('boss', { district: 5, entry: 'good', airship: true }); const fb = scene(); for (let k = 0; k < 4; k++) { press('Space'); step(10); } fb.boss.hp = 2; ok = step(600, (i) => { fb.agent.x = fb.boss.x - 160; fb.agent.facing = 1; if (i % 8 === 0) press('Space'); }); log('final boss ok=' + ok + ' state=' + fb.boss.state); until(() => game.sceneName === 'results', 600); step(300); press('Digit1'); until(() => game.sceneName === 'story', 200); until(() => game.sceneName === 'ending', 800, () => press('Space')); log('ending? ' + game.sceneName + ' won=' + S.profile.wonGame); step(600); press('Space'); step(120); log('after ending: ' + game.sceneName);
+  goto('title', {}); step(60); press('Digit3'); step(10); press('Escape'); step(10); press('Digit4'); step(10); press('Escape'); step(10);
+  // pause menu
+  goto('city', { district: 0 }); step(10); press('Escape'); step(10); log('paused=' + game.paused); press('Digit3'); step(5); press('Digit1'); step(5); log('paused=' + game.paused);
+  log('achievements=' + Object.keys(S.profile.achievements).join(','));
+  log('SIM DONE errors=' + LOG.filter(l => l.startsWith('ERROR') || l.startsWith('FRAME ERROR')).length);
+} catch (e) { log('SIM EXCEPTION: ' + e.message + ' :: ' + (e.stack || e)); }
+</script>
+</body></html>

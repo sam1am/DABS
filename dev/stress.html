@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>DABS bar stress</title>
+<style>body{background:#111;color:#0f0;font:13px monospace;margin:0} #log{white-space:pre-wrap;padding:8px} canvas{width:320px;height:180px;display:block}</style>
+</head>
+<body>
+<div id="wrap" style="position:static;display:block"><canvas id="game" width="1280" height="720"></canvas></div>
+<div id="err"></div>
+<div id="log"></div>
+<script src="../js/util.js"></script>
+<script>DABS.NO_AUTOLOOP = true;</script>
+<script src="../js/input.js"></script><script src="../js/save.js"></script><script src="../js/audio.js"></script><script src="../js/gfx.js"></script><script src="../js/ui.js"></script><script src="../js/data.js"></script>
+<script src="../js/scenes/title.js"></script><script src="../js/scenes/story.js"></script><script src="../js/scenes/hq.js"></script><script src="../js/scenes/city.js"></script><script src="../js/scenes/rappel.js"></script><script src="../js/scenes/bar.js"></script><script src="../js/scenes/boss.js"></script><script src="../js/scenes/results.js"></script><script src="../js/scenes/ending.js"></script>
+<script src="../js/main.js"></script>
+<script>
+// Random-input stress test of the bar scene. Logs invariant violations via sync XHR to /SIMLOG/<msg>.
+const LOG = []; const logEl = document.getElementById('log');
+function log(m) { LOG.push(m); logEl.textContent += m + '\n'; try { const x = new XMLHttpRequest(); x.open('GET', '/SIMLOG/' + encodeURIComponent(m).slice(0, 900), false); x.send(); } catch (e) {} }
+window.addEventListener('error', e => log('ERROR ' + e.message + ' @ ' + String(e.filename).split('/').pop() + ':' + e.lineno));
+const I = DABS.input, game = DABS.game, S = DABS.save, D = DABS.data;
+function press(code) { I.pressed[code] = true; I.down[code] = true; }
+function goto(name, params) { game.fade.cb = null; game.createScene(name, params); game.fade.a = 0; game.fade.dir = 0; }
+const q = new URLSearchParams(location.search); const RUNS = +(q.get('runs') || 40); DABS.game.toasts.draw = () => {};; const FRAMES = +(q.get('frames') || 6000); const SEED = +(q.get('seed') || 1);
+let rng = DABS.util.rng(SEED);
+try {
+  localStorage.clear(); game.init(); game.fade.a = 0; game.fade.dir = 0;
+  let anomalies = 0, ends = {}, sitWalk = 0, overCount = 0, stuck = 0, frozeFail = 0, mismatch = 0;
+  for (let run = 0; run < RUNS; run++) {
+    const d = run % 6, bi = run % 3; goto('bar', { district: d, bar: bi, entry: 'good' }); const b = game.scene; b.intro = 0; if (!q.get('draw')) { b.draw = () => {}; }
+    // give the bar plenty of time so we can see whether it ends on its own
+    if (q.get('longtime')) { b.timeLeft = 600; b.timeMax = 600; }
+    let reported = false, f = 0; let hold = 0, dir = 1;
+    const placed = b.patrons.reduce((n, p) => n + p.viol.length, 0) + b.bartender.viol.length + b.objects.filter(o => o.guilty).length;
+    if (placed !== b.total) mismatch++, log(`TOTAL MISMATCH run${run} d${d}: total=${b.total} placed=${placed} picked=${b.violations.join(',')} bt=${b.bartender.viol.join('+')}`);
+    const SMART = q.get('smart'); let plan = null;
+    for (f = 0; f < FRAMES && game.sceneName === 'bar'; f++) {
+      // random-ish agent: walk toward a random patron/object, mash E and digits, sometimes sprint/space
+      if (hold <= 0) { hold = rng.int(5, 60); const targets = b.patrons.filter(p => p.state !== 'gone').map(p => p.x).concat(b.objects.map(o => o.x), [b.bartender.x, b.exit.x]); const tx = rng.pick(targets); dir = Math.sign(tx - b.agent.x) || 1; }
+      if (SMART) {
+        const a = b.agent; const flee = b.patrons.find(p => p.state === 'fleeing');
+        if (flee) { I.down.KeyD = flee.x > a.x; I.down.KeyA = !I.down.KeyD; I.down.ShiftLeft = true; if (Math.abs(flee.x - a.x) < 80 && rng() < 0.5) press('Space'); }
+        else if (b.panel) {
+          const P = b.panel, tp = P.target.p, to = P.target.o;
+          if (P.mode === 'checking') {} else if (P.target.kind === 'exit') { press(q.get('leave') && rng() < 0.3 ? 'Digit1' : 'Digit2'); }
+          else if (P.target.kind === 'object') { press(to.guilty && rng() < 0.97 ? 'Digit1' : 'Digit2'); }
+          else if (P.mode === 'main') { const want = (tp.viol || []).find(v => !tp.cited.includes(v) && (v !== 'NO_ID_CHECK' || tp.evidence > 0)); if (!want && rng() < 0.97) press(tp.isBartender ? 'Digit2' : 'Digit3'); else if (!tp.isBartender && !tp.idKnown && rng() < 0.4) press('Digit1'); else press(tp.isBartender ? 'Digit1' : 'Digit2'); }
+          else if (P.mode === 'cite') { const list = tp.isBartender ? D.BARTENDER_CITES : D.PATRON_CITES.filter(v => v !== 'ON_DUTY' || tp.staff); const want = (tp.viol || []).find(v => !tp.cited.includes(v) && (v !== 'NO_ID_CHECK' || tp.evidence > 0)); let idx = list.indexOf(want); if (idx < 0 || rng() < 0.02) idx = rng.int(0, list.length); press('Digit' + (idx + 1)); }
+          if (P.target.p && !P.target.p.isBartender && P.target.p.state !== 'fleeing') { const tp2 = P.target.p; if (tp2._fx === undefined) tp2._fx = tp2.x; else if (Math.abs(tp2._fx - tp2.x) > 0.01) { frozeFail++; if (frozeFail < 4) log(`MOVED WHILE INSPECTED run${run} ${tp2.name} state=${tp2.state} dx=${(tp2.x - tp2._fx).toFixed(1)}`); tp2._fx = tp2.x; } }
+        } else {
+          if (!plan || plan.t-- <= 0 || (plan.p && (plan.p.state === 'gone' || plan.p.state === 'fleeing'))) {
+            const cands = b.patrons.filter(p => p.state !== 'gone' && p.state !== 'fleeing').map(p => ({ x: p.x, p, up: false })).concat(b.objects.filter(o => !o.cited).map(o => ({ x: o.x, o, up: true })), [{ x: b.bartender.x, up: true }]);
+            const guilty = cands.filter(c => (c.p && c.p.viol.some(v => !c.p.cited.includes(v))) || (c.o && c.o.guilty) || (!c.p && !c.o && b.bartender.viol.some(v => !b.bartender.cited.includes(v))));
+            plan = Object.assign({ t: rng.int(60, 240) }, q.get('leave') && rng() < 0.3 ? { x: b.exit.x, up: false } : rng() < 0.8 && guilty.length ? rng.pick(guilty) : rng.pick(cands));
+          }
+          const tx = plan.p ? plan.p.x : plan.x; const dx = tx - a.x; I.down.KeyD = dx > 6; I.down.KeyA = dx < -6; I.down.ShiftLeft = rng() < 0.3; I.down.ArrowUp = plan.up;
+          if (Math.abs(dx) < 30) press('KeyE');
+        }
+        if (rng() < 0.02) press('Space'); if (rng() < 0.02) press('KeyE');
+      } else {
+      hold--; I.down.KeyD = dir > 0; I.down.KeyA = dir < 0; I.down.ShiftLeft = rng() < 0.5; I.down.ArrowUp = rng() < 0.25;
+      if (rng() < 0.15) press('KeyE'); if (rng() < 0.3) press('Digit' + rng.int(1, 6)); if (rng() < 0.05) press('Space'); } 
+      try { game.frame(1 / 60); } catch (e) { log('FRAME ERROR run' + run + ' f' + f + ': ' + e.message + ' :: ' + String(e.stack).split('\n').slice(0, 2).join(' | ')); break; }
+      I.down.ShiftLeft = false; I.down.ArrowUp = false; I.down.KeyD = false; I.down.KeyA = false;
+      if (game.sceneName !== 'bar') break; if (!b.panel) for (const p of b.patrons) p._fx = undefined;
+      if (b.caught.length > b.total && !reported) { reported = true; overCount++; log(`OVERCOUNT run${run} d${d} f${f}: caught=${b.caught.join(',')} total=${b.total} viol=${b.violations.join(',')} log=${b.log.map(l => l.text).join(' ; ')}`); }
+      for (const p of b.patrons) { if (p.state === 'gone') continue; if (p.pose === 'sit' && (p.walking || Math.abs(p.x - p.home) > 2 || !p.sit)) { sitWalk++; if (sitWalk <= 5) log(`SITWALK run${run} ${p.name} state=${p.state} staff=${p.staff} wander=${p.wander} x=${Math.round(p.x)} home=${p.home}`); p.pose = 'flagged'; } }
+    }
+    const res = game.scene; const rp = res && res.p;
+    const key = rp ? rp.reason : 'none'; ends[key] = (ends[key] || 0) + 1;
+    if (game.sceneName === 'bar') { stuck++; log(`STUCK run${run} d${d}: caught=${b.caught.length}/${b.total} remaining=${b.remainingPossible()} timeLeft=${b.timeLeft.toFixed(0)} patrons=${b.patrons.map(p => p.state + ':' + p.viol.join('+') + (p.cited.length ? '(c)' : '')).join(' ')} bt=${b.bartender.viol.join('+')}/${b.bartender.cited.join('+')} lax=${b.bartender.lax} objs=${b.objects.filter(o => o.guilty && !o.cited).map(o => o.type).join(',')}`); }
+    else if (rp) { if (rp.caught > rp.total) { anomalies++; log(`RESULT OVERCOUNT run${run}: ${rp.caught}/${rp.total} reason=${rp.reason} missed=${rp.missed.join(',')}`); } log(`run${run} d${d} b${bi}: ${rp.caught}/${rp.total} reason=${rp.reason} f=${f} viol=${b.violations.join(',')} remaining=${b.remainingPossible()} escapes=${rp.escapes}`); }
+  }
+  log(`STRESS DONE overcount=${overCount} resultOver=${anomalies} sitwalk=${sitWalk} stuck=${stuck} mismatch=${mismatch} movedWhileInspected=${frozeFail} ends=${JSON.stringify(ends)} errors=${LOG.filter(l => l.startsWith('ERROR') || l.startsWith('FRAME ERROR')).length}`);
+} catch (e) { log('STRESS EXCEPTION: ' + e.message + ' :: ' + (e.stack || e)); }
+</script>
+</body></html>

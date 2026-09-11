@@ -1,0 +1,4 @@
+html, body { margin:0; padding:0; background:#05060f; height:100%; overflow:hidden; font-family: 'Nunito', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
+#wrap { position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background: radial-gradient(ellipse at center, #0c1030 0%, #05060f 70%); }
+canvas#game { display:block; background:#05060f; image-rendering:auto; box-shadow: 0 0 60px rgba(90,120,255,0.25); cursor:default; }
+#err { position:fixed; left:0; right:0; bottom:0; max-height:40%; overflow:auto; background:rgba(120,0,0,0.92); color:#fff; font:14px/1.4 monospace; padding:8px 12px; display:none; white-space:pre-wrap; z-index:10; }

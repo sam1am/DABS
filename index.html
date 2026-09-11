@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>DABS — Department of Beverage Services</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bangers&family=Nunito:wght@400;700;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div id="wrap"><canvas id="game" width="1280" height="720"></canvas></div>
+<div id="err"></div>
+<script>window.addEventListener("error",function(e){var d=document.getElementById("err");d.style.display="block";d.textContent+=(e.message||e)+" @ "+String(e.filename||"").split("/").pop()+":"+e.lineno+"\n";});</script>
+<script src="js/util.js"></script>
+<script src="js/input.js"></script>
+<script src="js/save.js"></script>
+<script src="js/audio.js"></script>
+<script src="js/gfx.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/data.js"></script>
+<script src="js/scenes/title.js"></script>
+<script src="js/scenes/story.js"></script>
+<script src="js/scenes/hq.js"></script>
+<script src="js/scenes/city.js"></script>
+<script src="js/scenes/rappel.js"></script>
+<script src="js/scenes/bar.js"></script>
+<script src="js/scenes/boss.js"></script>
+<script src="js/scenes/results.js"></script>
+<script src="js/scenes/ending.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>
