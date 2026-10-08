@@ -1,6 +1,6 @@
 // DABS - save/profile
 (function () {
-  const KEY = 'dabs_save_v1';
+  const KEY = 'dabs_save_v2'; // v2: Utah revamp renamed every district, so v1 progress no longer maps
   const S = DABS.save = {};
   S.defaultProfile = function () {
     return {

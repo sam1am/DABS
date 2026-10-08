@@ -75,7 +75,6 @@
       if (!this.active) return; const p = this.t / this.dur; const a = Math.min(1, this.t * 3, (this.dur - this.t) * 2); const slide = U.ease.outBack(Math.min(1, this.t * 2.5));
       ctx.save(); ctx.globalAlpha = U.clamp(a, 0, 1); const y = DABS.H * 0.36;
       ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(0, y - 70, DABS.W, 140); ctx.fillStyle = this.color; ctx.fillRect(0, y - 70, DABS.W, 4); ctx.fillRect(0, y + 66, DABS.W, 4);
-      ctx.translate(DABS.W / 2 * (1 - slide) + (DABS.W / 2) * slide - DABS.W / 2 + DABS.W / 2, 0);
       G.neon(ctx, this.title, DABS.W / 2 - (1 - slide) * 400, y - 8, { size: 64, color: this.color, glow: 30 });
       if (this.sub) G.text(ctx, this.sub, DABS.W / 2 + (1 - slide) * 400, y + 44, { size: 24, color: '#fff', align: 'center', shadow: true });
       ctx.restore();

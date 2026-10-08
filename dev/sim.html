@@ -65,9 +65,9 @@ try {
   for (const o of b.objects) { if (b.done) break; log('object ' + o.type + ' guilty=' + o.guilty); if (!o.guilty) continue; b.agent.x = o.x; I.down.ArrowUp = true; step(2); press('KeyE'); step(2); I.down.ArrowUp = false; press('Digit1'); step(3); log('obj cited=' + o.cited + ' caught=' + b.caught.length); }
   log('bar caught=' + b.caught.length + '/' + b.total + ' done=' + b.done + ' timeLeft=' + b.timeLeft.toFixed(1));
   until(() => game.sceneName === 'results', 5000); log('results? ' + game.sceneName + ' rank=' + (scene().p && scene().p.rank) + ' money=' + S.profile.money);
-  step(300); press('Digit1'); until(() => game.sceneName === 'city', 200); log('back to city: ' + game.sceneName + ' busted=' + S.bar('sudsrow', 0).busted);
+  step(300); press('Digit1'); until(() => game.sceneName === 'city', 200); log('back to city: ' + game.sceneName + ' busted=' + S.bar('slc', 0).busted);
   // run through the rest via forced results to unlock boss
-  for (let i = 1; i < 4; i++) { const bs = S.bar('sudsrow', i); bs.busted = true; bs.best = 'silver'; }
+  for (let i = 1; i < 4; i++) { const bs = S.bar('slc', i); bs.busted = true; bs.best = 'silver'; }
   goto('city', { district: 0, fromBar: 0 }); step(30); log('boss unlocked=' + game.bossUnlocked(DABS.data.DISTRICTS[0]) + ' near=' + JSON.stringify(scene().near_));
   const cc = scene(); cc.blimp.x = cc.bossBuilding.x + cc.bossBuilding.w / 2; cc.blimp.y = 200; step(3); log('near boss=' + (cc.near_ && cc.near_.type)); press('KeyE'); until(() => game.sceneName === 'rappel', 60); log('rappel boss? ' + game.sceneName);
   goto('boss', { district: 0, entry: 'good' }); const bo = scene(); for (let k = 0; k < 4; k++) { press('Space'); step(10); } log('boss state=' + bo.boss.state);
@@ -84,7 +84,7 @@ try {
   // rappel in later districts
   for (let d = 2; d < 6; d += 3) { goto('rappel', { district: d, bar: 1 }); const rr = scene(); ok = until(() => rr.state === 'align', 3000, (i) => { I.down.KeyS = true; I.down.KeyA = (i % 40) < 20; I.down.KeyD = !I.down.KeyA; }); I.down.KeyS = false; I.down.KeyA = false; I.down.KeyD = false; log('rappel d' + d + ' ok=' + ok + ' hits=' + rr.agent.hits); }
   // final district city with zeppelin
-  for (let i = 0; i < 6; i++) { const bs = S.bar('distillery', i); bs.busted = true; } S.district('distillery').unlocked = true;
+  for (let i = 0; i < 6; i++) { const bs = S.bar('provo', i); bs.busted = true; } S.district('provo').unlocked = true;
   goto('city', { district: 5 }); const fc = scene(); log('zep=' + !!fc.zep); if (fc.zep) { fc.blimp.x = fc.zep.x - 300; fc.blimp.y = fc.zep.y; ok = step(600, (i) => { if (i % 6 === 0) press('Space'); fc.blimp.x = fc.zep.x - 330; fc.blimp.y = fc.zep.y + 60; fc.blimp.dir = 1; }); log('zep fight ok=' + ok + ' engines=' + fc.zep.engines.map(e => e.hp).join(',') + ' stalled=' + fc.zep.stalled + ' hp=' + Math.round(fc.blimp.hp)); fc.zep.engines.forEach(e => e.hp = 0); fc.zep.stalled = true; step(120); fc.blimp.x = fc.zep.x; fc.blimp.y = fc.zep.y - 100; step(3); log('near=' + (fc.near_ && fc.near_.type)); press('KeyE'); until(() => game.sceneName === 'rappel', 60); log('airship rappel? ' + game.sceneName + ' airship=' + scene().airship); }
   goto('boss', { district: 5, entry: 'good', airship: true }); const fb = scene(); for (let k = 0; k < 4; k++) { press('Space'); step(10); } fb.boss.hp = 2; ok = step(600, (i) => { fb.agent.x = fb.boss.x - 160; fb.agent.facing = 1; if (i % 8 === 0) press('Space'); }); log('final boss ok=' + ok + ' state=' + fb.boss.state); until(() => game.sceneName === 'results', 600); step(300); press('Digit1'); until(() => game.sceneName === 'story', 200); until(() => game.sceneName === 'ending', 800, () => press('Space')); log('ending? ' + game.sceneName + ' won=' + S.profile.wonGame); step(600); press('Space'); step(120); log('after ending: ' + game.sceneName);
   goto('title', {}); step(60); press('Digit3'); step(10); press('Escape'); step(10); press('Digit4'); step(10); press('Escape'); step(10);

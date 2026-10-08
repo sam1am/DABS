@@ -45,6 +45,8 @@
       }
       this.hqX = 260;
       this.folders = []; const fr = U.rng(U.hash(D_.id) + 99); for (let i = 0; i < D_.folders; i++) this.folders.push({ i, x: fr.range(700, W - 400), y: fr.range(110, 440), got: (this.ds.folders || []).includes(i) });
+      // keep folders above the rooftops: the blimp is stopped 88px above a roof, so anything lower over (or wedged beside) a building is unreachable
+      for (const f of this.folders) for (const bd of this.near) if (f.x > bd.x - 80 && f.x < bd.x + bd.w + 80) f.y = Math.min(f.y, GROUND - bd.h - 30);
       this.lamps = []; for (let lx = 100; lx < W; lx += 260) this.lamps.push(lx);
     }
     makeZeppelin() { this.zep = { x: this.W - 1200, y: 230, vx: -45, dir: -1, engines: [{ dx: -160, dy: 60, hp: 3 }, { dx: 160, dy: 60, hp: 3 }, { dx: -230, dy: -30, hp: 3 }, { dx: 230, dy: -30, hp: 3 }], stalled: false, dropT: 2, droneT: 5, hitT: 0 }; }
@@ -104,8 +106,8 @@
       const b = this.blimp; this.near_ = null; const zone = 20 + 40 * this.upg('radar');
       // HQ
       if (b.x < this.hqX + 220 && b.y < 330) this.near_ = { type: 'hq', label: 'DOCK AT HQ (upgrades & briefings)' };
-      for (const bd of this.near) { if (bd.bar === null && !bd.boss) continue; if (b.x > bd.x - zone && b.x < bd.x + bd.w + zone) { if (bd.boss) { if (this.D.boss.airship) continue; if (this.ds.bossDefeated) this.near_ = { type: 'boss', label: `RE-RAID ${this.D.boss.lair} (kingpin already cited)`, b: bd }; else if (this.game.bossUnlocked(this.D)) this.near_ = { type: 'boss', label: `RAID ${this.D.boss.lair}`, b: bd }; else this.near_ = { type: 'locked', label: `${this.D.boss.lair} — SEALED. Bust ${this.D.required - this.game.bustedCount(this.D)} more bars.`, b: bd }; } else { const bar = this.D.bars[bd.bar]; const bs = S.bar(this.D.id, bd.bar); this.near_ = { type: 'bar', label: (bs.busted ? 'RE-INSPECT ' : 'RAPPEL INTO ') + bar.name + (bar.opt ? ' (optional)' : ''), b: bd, bar: bd.bar }; } } }
-      if (this.zep && this.zep.stalled && Math.abs(b.x - this.zep.x) < 200 && b.y < this.zep.y - 40) this.near_ = { type: 'zep', label: 'BOARD THE FLYING SPEAKEASY' };
+      for (const bd of this.near) { if (bd.bar === null && !bd.boss) continue; if (b.x > bd.x - zone && b.x < bd.x + bd.w + zone) { if (bd.boss) { if (this.D.boss.airship) continue; if (this.ds.bossDefeated) this.near_ = { type: 'boss', label: `RE-RAID ${this.D.boss.lair} (kingpin already cited)`, b: bd }; else if (this.game.bossUnlocked(this.D)) this.near_ = { type: 'boss', label: `RAID ${this.D.boss.lair}`, b: bd }; else this.near_ = { type: 'locked', label: `KINGPIN'S LAIR — SEALED. Bust ${this.D.required - this.game.bustedCount(this.D)} more bars.`, b: bd }; } else { const bar = this.D.bars[bd.bar]; const bs = S.bar(this.D.id, bd.bar); this.near_ = { type: 'bar', label: (bs.busted ? 'RE-INSPECT ' : 'RAPPEL INTO ') + bar.name + (bar.opt ? ' (optional)' : ''), b: bd, bar: bd.bar }; } } }
+      if (this.zep && this.zep.stalled && Math.abs(b.x - this.zep.x) < 200 && b.y < this.zep.y - 40) this.near_ = { type: 'zep', label: `BOARD ${this.D.boss.lair}` };
       if (this.near_ && I.justPressed('interact')) {
         const n = this.near_; A.setEngine(0);
         if (n.type === 'hq') { A.sfx('confirm'); S.write(); this.game.setScene('hq'); }
@@ -123,9 +125,9 @@
     }
     updateHazards(dt) {
       const H = this.D.hazards; const b = this.blimp; const cx = this.cam.x; const view = { l: cx - 100, r: cx + DABS.W + 100};
-      // Pigeons
-      this.pigeonT -= dt; if (this.pigeonT <= 0 && H.pigeons) { this.pigeonT = U.rand(2.5, 5); const fromLeft = Math.random() < 0.5; const y = U.rand(90, 470); const n = U.randInt(2, 5); const spd = U.rand(130, 210) * (fromLeft ? 1 : -1); const col = this.D.id === 'docks' ? '#e5e7eb' : '#6b7280'; for (let i = 0; i < n; i++) this.pigeons.push({ x: fromLeft ? view.l - i * 40 : view.r + i * 40, y: y + U.rand(-30, 30), vx: spd, ph: Math.random() * 6, col }); }
-      for (let i = this.pigeons.length - 1; i >= 0; i--) { const p = this.pigeons[i]; p.x += p.vx * dt; p.ph += dt; p.y += Math.sin(p.ph * 3) * 30 * dt; let dead = false; if (this.blimpHit(p.x, p.y, 5)) { this.damage(4, 'a pigeon'); dead = true; } else if (this.shotHits(p.x, p.y, 22)) { dead = true; this.parts.text(p.x, p.y - 20, 'SPLAT', '#fca5a5', 18); } if (dead) { A.sfx('splat'); S.profile.stats.pigeons++; this.game.checkStatAchievements(); this.parts.burst(p.x, p.y, 10, { color: [p.col, '#fff', '#ef4444'], speed: 160, life: 0.9, type: 'feather', size: 5, gravity: 200 }); this.pigeons.splice(i, 1); continue; } if (p.x < view.l - 300 || p.x > view.r + 300) this.pigeons.splice(i, 1); }
+      // Seagulls (the state bird; internally still "pigeons" so old stats keep counting)
+      this.pigeonT -= dt; if (this.pigeonT <= 0 && H.pigeons) { this.pigeonT = U.rand(2.5, 5); const fromLeft = Math.random() < 0.5; const y = U.rand(90, 470); const n = U.randInt(2, 5); const spd = U.rand(130, 210) * (fromLeft ? 1 : -1); const col = '#f1f5f9'; for (let i = 0; i < n; i++) this.pigeons.push({ x: fromLeft ? view.l - i * 40 : view.r + i * 40, y: y + U.rand(-30, 30), vx: spd, ph: Math.random() * 6, col }); }
+      for (let i = this.pigeons.length - 1; i >= 0; i--) { const p = this.pigeons[i]; p.x += p.vx * dt; p.ph += dt; p.y += Math.sin(p.ph * 3) * 30 * dt; let dead = false; if (this.blimpHit(p.x, p.y, 5)) { this.damage(4, 'a seagull'); dead = true; } else if (this.shotHits(p.x, p.y, 22)) { dead = true; this.parts.text(p.x, p.y - 20, 'SPLAT', '#fca5a5', 18); } if (dead) { A.sfx('splat'); S.profile.stats.pigeons++; this.game.checkStatAchievements(); this.parts.burst(p.x, p.y, 10, { color: [p.col, '#fff', '#ef4444'], speed: 160, life: 0.9, type: 'feather', size: 5, gravity: 200 }); this.pigeons.splice(i, 1); continue; } if (p.x < view.l - 300 || p.x > view.r + 300) this.pigeons.splice(i, 1); }
       // Drones
       const droneCap = H.drones * 2 + (this.zep ? 2 : 0);
       this.droneT -= dt; if (this.droneT <= 0 && H.drones && this.drones.length < droneCap) { this.droneT = U.rand(7, 12) / H.drones; this.spawnDrone(view); }
@@ -141,17 +143,17 @@
       // Kegs (falling)
       for (let i = this.kegs.length - 1; i >= 0; i--) { const k = this.kegs[i]; k.vy += 520 * dt; k.y += k.vy * dt; k.rot += dt * 3; if (this.blimpHit(k.x, k.y, 12)) { this.damage(14, 'a falling keg'); this.parts.burst(k.x, k.y, 12, { color: ['#8b5a2b', '#fbbf24', '#fff8e1'], speed: 200, life: 0.6, type: 'shard', size: 6, gravity: 300 }); this.kegs.splice(i, 1); continue; } if (k.y > GROUND - 10) { A.sfx('bonk'); this.parts.burst(k.x, GROUND - 10, 12, { color: ['#8b5a2b', '#fbbf24', '#fff8e1'], speed: 200, life: 0.6, type: 'shard', size: 6, gravity: 300, up: 150 }); this.kegs.splice(i, 1); } }
       // Choppers
-      this.chopperT -= dt; if (this.chopperT <= 0 && H.choppers) { this.chopperT = U.rand(16, 26); const fromLeft = Math.random() < 0.5; this.choppers.push({ x: fromLeft ? view.l - 200 : view.r + 200, y: U.rand(140, 380), vx: (fromLeft ? 1 : -1) * U.rand(200, 260), t: 0, warned: false }); this.game.toasts.add('⚠ Helicopter inbound!', '#fca5a5', 2.5); A.sfx('warn'); }
-      for (let i = this.choppers.length - 1; i >= 0; i--) { const c = this.choppers[i]; c.t += dt; c.x += c.vx * dt; c.y += Math.sin(c.t * 1.5) * 40 * dt; if (this.blimpHit(c.x, c.y, 50)) { this.damage(12, 'a news helicopter'); b.vx += (b.x - c.x) * 3; b.vy -= 120; } const sh = this.shotHits(c.x, c.y, 60); if (sh) { A.sfx('click'); this.parts.burst(sh.x, sh.y, 4, { color: ['#fff'], speed: 100, life: 0.3, type: 'spark' }); } if ((c.vx > 0 && c.x > this.W + 300) || (c.vx < 0 && c.x < -300)) this.choppers.splice(i, 1); }
+      this.chopperT -= dt; if (this.chopperT <= 0 && H.choppers) { this.chopperT = U.rand(16, 26); const fromLeft = Math.random() < 0.5; this.choppers.push({ x: fromLeft ? view.l - 200 : view.r + 200, y: U.rand(140, 380), vx: (fromLeft ? 1 : -1) * U.rand(200, 260), t: 0, warned: false }); this.game.toasts.add('⚠ Chopper 5 inbound!', '#fca5a5', 2.5); A.sfx('warn'); }
+      for (let i = this.choppers.length - 1; i >= 0; i--) { const c = this.choppers[i]; c.t += dt; c.x += c.vx * dt; c.y += Math.sin(c.t * 1.5) * 40 * dt; if (this.blimpHit(c.x, c.y, 50)) { this.damage(12, 'Chopper 5'); b.vx += (b.x - c.x) * 3; b.vy -= 120; } const sh = this.shotHits(c.x, c.y, 60); if (sh) { A.sfx('click'); this.parts.burst(sh.x, sh.y, 4, { color: ['#fff'], speed: 100, life: 0.3, type: 'spark' }); } if ((c.vx > 0 && c.x > this.W + 300) || (c.vx < 0 && c.x < -300)) this.choppers.splice(i, 1); }
       // Fireworks
       this.fwT -= dt; if (this.fwT <= 0 && H.fireworks) { this.fwT = U.rand(2.5, 5); const x = U.clamp(b.x + U.rand(-400, 400), 200, this.W - 200); this.fireworks.push({ x, y: GROUND, vy: -U.rand(380, 520), ty: U.rand(140, 420), t: 0, boom: 0, col: U.choice(['#f472b6', '#60a5fa', '#fde68a', '#4ade80', '#f87171']) }); }
-      for (let i = this.fireworks.length - 1; i >= 0; i--) { const f = this.fireworks[i]; if (!f.boom) { f.y += f.vy * dt; f.vy += 60 * dt; if (Math.random() < 0.6) this.parts.add({ x: f.x, y: f.y, vx: U.rand(-20, 20), vy: 60, life: 0.4, size: 2, color: '#fde68a' }); if (f.y <= f.ty || f.vy > 0) { f.boom = 0.45; A.sfx('explode'); this.parts.burst(f.x, f.y, 40, { color: [f.col, '#fff'], speed: 260, life: 1.1, size: 3, gravity: 120, drag: 1.5 }); if (this.blimpHit(f.x, f.y, 70)) this.damage(10, 'fireworks'); } } else { f.boom -= dt; if (f.boom <= 0) this.fireworks.splice(i, 1); } }
+      for (let i = this.fireworks.length - 1; i >= 0; i--) { const f = this.fireworks[i]; if (!f.boom) { f.y += f.vy * dt; f.vy += 60 * dt; if (Math.random() < 0.6) this.parts.add({ x: f.x, y: f.y, vx: U.rand(-20, 20), vy: 60, life: 0.4, size: 2, color: '#fde68a' }); if (f.y <= f.ty || f.vy > 0) { f.boom = 0.45; A.sfx('explode'); this.parts.burst(f.x, f.y, 40, { color: [f.col, '#fff'], speed: 260, life: 1.1, size: 3, gravity: 120, drag: 1.5 }); if (this.blimpHit(f.x, f.y, 70)) this.damage(10, 'Evanston fireworks'); } } else { f.boom -= dt; if (f.boom <= 0) this.fireworks.splice(i, 1); } }
       // Storm
       this.stormT -= dt; if (H.storm && this.stormT <= 0) { this.stormT = U.rand(8, 14); this.bolts.push({ x: U.clamp(b.x + U.rand(-160, 160), 100, this.W - 100), warn: 1.1, t: 0, done: false, segs: null }); A.sfx('warn'); }
       for (let i = this.bolts.length - 1; i >= 0; i--) { const bo = this.bolts[i]; if (bo.warn > 0) { bo.warn -= dt; if (bo.warn <= 0) { A.sfx('thunder'); this.shake = 0.8; bo.segs = []; let y = 0, x = bo.x; while (y < GROUND - 60) { const ny = y + U.rand(30, 70); const nx = x + U.rand(-30, 30); bo.segs.push([x, y, nx, ny]); x = nx; y = ny; } if (Math.abs(b.x - bo.x) < 90 && !b.crashed) this.damage(18, 'lightning'); } } else { bo.t += dt; if (bo.t > 0.35) this.bolts.splice(i, 1); } }
-      // Frisbees (frat row flavor)
-      if (this.D.id === 'frat' && Math.random() < dt * 0.25) { this.frisbees.push({ x: b.x + U.rand(-500, 500), y: GROUND - 40, vx: U.rand(-80, 80), vy: -U.rand(420, 560), t: 0 }); }
-      for (let i = this.frisbees.length - 1; i >= 0; i--) { const f = this.frisbees[i]; f.t += dt; f.vy += 260 * dt; f.x += f.vx * dt; f.y += f.vy * dt; if (this.blimpHit(f.x, f.y, 6)) { this.damage(5, 'a frisbee'); this.frisbees.splice(i, 1); continue; } if (f.y > GROUND) this.frisbees.splice(i, 1); }
+      // Tiny UFOs (Uintah Basin flavor)
+      if (this.D.id === 'basin' && Math.random() < dt * 0.25) { this.frisbees.push({ x: b.x + U.rand(-500, 500), y: GROUND - 40, vx: U.rand(-80, 80), vy: -U.rand(420, 560), t: 0 }); }
+      for (let i = this.frisbees.length - 1; i >= 0; i--) { const f = this.frisbees[i]; f.t += dt; f.vy += 260 * dt; f.x += f.vx * dt; f.y += f.vy * dt; if (this.blimpHit(f.x, f.y, 6)) { this.damage(5, 'a very small UFO'); this.frisbees.splice(i, 1); continue; } if (f.y > GROUND) this.frisbees.splice(i, 1); }
     }
     spawnDrone(view) { const fromLeft = Math.random() < 0.5; this.drones.push({ x: fromLeft ? view.l - 100 : view.r + 100, y: U.rand(90, 260), vx: 0, t: Math.random() * 6, hp: 2 + (this.di >= 4 ? 1 : 0), dropT: 1.5, flash: 0 }); }
     updateZep(dt) {
@@ -174,6 +176,9 @@
       G.drawStars(ctx, t, 300 + this.di, DABS.W, 500, 120, cx * 0.05);
       G.drawMoon(ctx, 1050 - cx * 0.03, 110, 42, this.di === 5 ? '#ffb4a2' : '#fff7d6');
       for (let i = 0; i < 5; i++) G.drawCloud(ctx, ((i * 450 + t * 6 * (i + 1) - cx * 0.12) % (DABS.W + 400) + DABS.W + 400) % (DABS.W + 400) - 200, 90 + i * 55, 1 + i * 0.15, 'rgba(120,120,170,0.16)');
+      // the Wasatch (or whatever range is handy), and for the lake district, the whales
+      G.drawMountains(ctx, 40 + this.di, GROUND - 100, cx * 0.1, U.shade(D_.sky[1], -0.4));
+      if (D_.id === 'lake') { const cyc = t % 11; if (cyc < 2.4) { const p = cyc / 2.4; G.drawWhale(ctx, 260 + (Math.floor(t / 11) * 397) % 760, 620 - Math.sin(p * Math.PI) * 300, 0.75, 1, t, { rot: -0.9 + p * 1.8, color: '#3d5a73' }); } }
       // far & mid layers
       ctx.fillStyle = D_.far; for (const b of this.far) { const x = b.x - cx * 0.25; if (x + b.w < 0 || x > DABS.W) continue; ctx.fillRect(x, GROUND - b.h - 120, b.w, b.h + 140); if (b.ant) ctx.fillRect(x + b.w / 2, GROUND - b.h - 150, 3, 30); }
       ctx.fillStyle = D_.fog; ctx.fillRect(0, 380, DABS.W, 340);
@@ -188,7 +193,7 @@
       // folders
       for (const f of this.folders) { if (f.got) continue; const x = f.x - cx; if (x < -40 || x > DABS.W + 40) continue; G.drawFolder(ctx, x, f.y, t + f.i); }
       // hazards
-      for (const f of this.frisbees) { ctx.save(); ctx.translate(f.x - cx, f.y); ctx.rotate(f.t * 10); G.ellipse(ctx, 0, 0, 14, 5, '#f472b6', G.OUT, 2); ctx.restore(); }
+      for (const f of this.frisbees) { ctx.save(); ctx.translate(f.x - cx, f.y); ctx.rotate(Math.sin(f.t * 6) * 0.2); ctx.shadowColor = '#a3e635'; ctx.shadowBlur = 12; ctx.beginPath(); ctx.arc(0, -2, 7, Math.PI, 0); ctx.fillStyle = '#d9f99d'; ctx.fill(); G.ellipse(ctx, 0, 0, 16, 5, '#94a3b8', G.OUT, 2); ctx.restore(); }
       for (const p of this.pigeons) G.drawPigeon(ctx, p.x - cx, p.y, p.ph + t, p.vx > 0 ? 1 : -1, 1, p.col);
       for (const c of this.choppers) G.drawChopper(ctx, c.x - cx, c.y, t, c.vx > 0 ? 1 : -1);
       for (const d of this.drones) { ctx.save(); if (d.flash > 0) ctx.globalAlpha = 0.5; G.drawDrone(ctx, d.x - cx, d.y, t + d.t, 1); ctx.restore(); }
@@ -224,7 +229,7 @@
         G.fillRound(ctx, x + b.w / 2 - 22, GROUND - 58, 44, 58, 4, '#1c1c2e', G.OUT, 2); ctx.fillStyle = 'rgba(255,220,150,0.7)'; ctx.fillRect(x + b.w / 2 - 14, GROUND - 50, 28, 26);
         ctx.fillStyle = b.boss ? '#7f1d1d' : D_.neon[(b.seed + 1) % D_.neon.length]; for (let ax = x + 6; ax < x + b.w - 20; ax += 24) { ctx.globalAlpha = (Math.floor((ax - x) / 24) % 2) ? 0.9 : 0.6; ctx.fillRect(ax, GROUND - 78, 22, 12); } ctx.globalAlpha = 1;
         // sign
-        const name = b.boss ? this.D.boss.lair : this.D.bars[b.bar].name; const color = b.boss ? '#ff2a2a' : D_.neon[b.seed % D_.neon.length];
+        const name = b.boss ? (this.ds.bossDefeated || this.game.bossUnlocked(this.D) ? this.D.boss.lair : '? ? ?') : this.D.bars[b.bar].name; const color = b.boss ? '#ff2a2a' : D_.neon[b.seed % D_.neon.length];
         const sw = Math.min(b.w + 40, 360); G.fillRound(ctx, x + b.w / 2 - sw / 2, top - 76, sw, 60, 8, '#0d0d1a', G.OUT, 3); G.line(ctx, x + 30, top, x + 40, top - 20, '#475569', 3); G.line(ctx, x + b.w - 30, top, x + b.w - 40, top - 20, '#475569', 3);
         const flick = (Math.sin(t * 13 + b.seed) > 0.96) ? 0.4 : 1; const busted = !b.boss && S.bar(this.D.id, b.bar).busted; const bossDone = b.boss && this.ds.bossDefeated;
         ctx.save(); ctx.font = `normal 30px ${G.TITLE_FONT}`; let size = 30; while (ctx.measureText(name).width > sw - 24 && size > 14) { size -= 2; ctx.font = `normal ${size}px ${G.TITLE_FONT}`; } ctx.restore();
@@ -249,7 +254,7 @@
     drawZep(ctx, cx, t) {
       const z = this.zep; ctx.save(); if (z.hitT > 0) ctx.globalAlpha = 0.7; G.drawZeppelin(ctx, z.x - cx, z.y, { t, dir: z.dir, engines: z.engines.map(e => [e.dx, e.dy, e.hp <= 0]) }); ctx.restore();
       for (const e of z.engines) { if (e.hp <= 0) { if (Math.random() < 0.4) this.parts.add({ x: z.x + e.dx * z.dir, y: z.y + e.dy, vy: -30, life: 0.9, size: 6, color: 'rgba(40,40,40,0.6)', type: 'smoke', grow: 12 }); continue; } const ex = z.x + e.dx * z.dir - cx, ey = z.y + e.dy; ctx.save(); ctx.globalAlpha = 0.5 + 0.3 * Math.sin(t * 6); G.circle(ctx, ex, ey, 32, null, '#ff4444', 2); ctx.restore(); UI.bar(ctx, ex - 20, ey + 26, 40, 6, e.hp / 3, '#ef4444'); }
-      if (!z.stalled) { const alive = z.engines.filter(e => e.hp > 0).length; G.text(ctx, `THE FLYING SPEAKEASY — engines: ${alive}/4`, z.x - cx, z.y - 110, { size: 16, color: '#fca5a5', align: 'center', shadow: true, font: 'title' }); }
+      if (!z.stalled) { const alive = z.engines.filter(e => e.hp > 0).length; G.text(ctx, `${this.D.boss.lair} — engines: ${alive}/4`, z.x - cx, z.y - 110, { size: 16, color: '#fca5a5', align: 'center', shadow: true, font: 'title' }); }
     }
     drawHUD(ctx, t) {
       const b = this.blimp; const p = S.profile; const D_ = this.D;

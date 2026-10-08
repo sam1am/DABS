@@ -3,7 +3,7 @@
   const U = DABS.util, I = DABS.input, A = DABS.audio, G = DABS.gfx, UI = DABS.ui, S = DABS.save, D = DABS.data;
   class ResultsScene {
     constructor(game, params) {
-      if (!params.kind) params = Object.assign({ kind: 'bar', district: 0, bar: 0, reason: 'clear', score: 4250, caught: 4, total: 4, missed: [], complaints: 0, rank: 'gold', busted: true, money: 625, timeBonus: 500, timeLeft: 20, tackles: 1, escapes: 0, log: [{ ok: true, text: 'Serving a Minor — Gary Fizzle' }], firstBust: true, entry: 'perfect' }, params);
+      if (!params.kind) params = Object.assign({ kind: 'bar', district: 0, bar: 0, reason: 'clear', score: 4250, caught: 4, total: 4, missed: [], complaints: 0, rank: 'gold', busted: true, money: 625, timeBonus: 500, timeLeft: 20, tackles: 1, escapes: 0, log: [{ ok: true, text: 'Serving a Minor — Braxton Fizzle' }], firstBust: true, entry: 'perfect' }, params);
       this.game = game; this.p = params; this.t = 0; this.di = params.district; this.D = D.DISTRICTS[this.di]; this.rows = []; this.shown = 0; this.rowT = 0; this.parts = new G.Particles();
       const p = params;
       if (p.kind === 'bar') {
@@ -31,7 +31,7 @@
     buildButtons() {
       const p = this.p; const items = [];
       if (p.kind === 'bar') {
-        items.push(new UI.Button(DABS.W / 2 - 330, 610, 320, 56, 'BACK TO THE SKYHAWK', () => this.game.setScene('city', { district: this.di, fromBar: p.bar, msg: p.bossNow ? `KINGPIN REVEALED: ${this.D.boss.name} at ${this.D.boss.lair}!` : undefined }), { key: '1', size: 22, color: '#166534' }));
+        items.push(new UI.Button(DABS.W / 2 - 330, 610, 320, 56, 'BACK TO THE SEAGULL', () => this.game.setScene('city', { district: this.di, fromBar: p.bar, msg: p.bossNow ? `KINGPIN REVEALED: ${this.D.boss.name} at ${this.D.boss.lair}!` : undefined }), { key: '1', size: 22, color: '#166534' }));
         items.push(new UI.Button(DABS.W / 2 + 10, 610, 320, 56, p.busted ? 'RE-INSPECT (better rating)' : 'RETRY INSPECTION', () => this.game.setScene('rappel', { district: this.di, bar: p.bar }), { key: '2', size: 20 }));
       } else if (p.won) {
         items.push(new UI.Button(DABS.W / 2 - 160, 610, 320, 56, 'CONTINUE', () => this.afterBoss(), { key: '1', size: 22, color: '#166534' }));
@@ -60,13 +60,16 @@
       G.drawBadge(ctx, x + 70, y + 70, 44);
       G.text(ctx, this.title, x + 130, y + 62, { size: 40, color: '#1f2937', font: 'title' }); G.text(ctx, this.sub, x + 130, y + 90, { size: 15, color: '#475569' });
       G.text(ctx, `Form 86-${this.p.kind === 'bar' ? 'B' : 'K'}  •  Agent: ${D.rankFor(S.profile.xp).rank.name}  •  District: ${this.D.name}`, x + 130, y + 112, { size: 12, color: '#64748b', font: 'mono' });
-      for (let i = 0; i < this.shown; i++) { const r = this.rows[i]; const ry = y + 160 + i * 34; const big = r[0] === 'SCORE'; G.text(ctx, r[0].toUpperCase(), x + 50, ry, { size: big ? 22 : 17, color: '#1f2937', font: big ? 'title' : 'mono' }); G.text(ctx, r[1], x + w - 300, ry, { size: big ? 26 : 18, color: r[2] === '#e5e7eb' ? '#1f2937' : U.shade(r[2], -0.35), align: 'right', font: 'title', maxWidth: 520 }); }
+      // long reports tighten their row spacing so the notes still fit on the form
+      const rowH = this.rows.length > 6 ? 28 : 34;
+      for (let i = 0; i < this.shown; i++) { const r = this.rows[i]; const ry = y + 160 + i * rowH; const big = r[0] === 'SCORE'; G.text(ctx, r[0].toUpperCase(), x + 50, ry, { size: big ? 22 : 17, color: '#1f2937', font: big ? 'title' : 'mono' }); G.text(ctx, r[1], x + w - 300, ry, { size: big ? 26 : 18, color: r[2] === '#e5e7eb' ? '#1f2937' : U.shade(r[2], -0.35), align: 'right', font: 'title', maxWidth: 520 }); }
       if (this.shown >= this.rows.length) {
         const sc = 1 + 0.2 * Math.max(0, 1 - this.rowT * 3); G.drawStamp(ctx, x + w - 210, y + 220, this.verdict.split(' — ')[0], this.verdictColor === '#4ade80' ? '#166534' : '#b91c1c', -0.25, 0.75 * sc);
         if (this.p.rank) { G.drawMedal(ctx, x + w - 120, y + 400, 48, this.p.rank, this.t); G.text(ctx, this.p.rank.toUpperCase(), x + w - 120, y + 480, { size: 22, color: '#1f2937', align: 'center', font: 'title' }); }
         G.text(ctx, this.verdict, x + w / 2, y + h - 30, { size: 26, color: U.shade(this.verdictColor, -0.4), align: 'center', font: 'title' });
         // log
-        if (this.p.log) { let ly = y + 170 + this.rows.length * 34; G.text(ctx, 'NOTES:', x + 50, ly, { size: 13, color: '#64748b', font: 'mono' }); ly += 20; this.p.log.slice(-6).forEach(l => { G.text(ctx, (l.ok ? '+ ' : '- ') + l.text, x + 50, ly, { size: 13, color: l.ok ? '#166534' : '#b91c1c', font: 'mono', maxWidth: 520 }); ly += 18; }); }
+        let ly = y + 166 + this.rows.length * rowH; const fit = Math.min(6, Math.floor((y + h - 62 - ly - 20) / 18) + 1);
+        if (this.p.log && this.p.log.length && fit > 0) { G.text(ctx, this.p.log.length > fit ? `NOTES (last ${fit} of ${this.p.log.length}):` : 'NOTES:', x + 50, ly, { size: 13, color: '#64748b', font: 'mono' }); ly += 20; this.p.log.slice(-fit).forEach(l => { G.text(ctx, (l.ok ? '+ ' : '- ') + l.text, x + 50, ly, { size: 13, color: l.ok ? '#166534' : '#b91c1c', font: 'mono', maxWidth: 520 }); ly += 18; }); }
       }
       ctx.restore(); this.parts.draw(ctx);
       if (this.shown >= this.rows.length) this.menu.draw(ctx, this.t); else G.text(ctx, 'Tallying...', DABS.W / 2, 640, { size: 18, color: '#94a3b8', align: 'center' });

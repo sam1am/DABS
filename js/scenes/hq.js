@@ -9,7 +9,7 @@
       // pick highest unlocked district as default selection
       for (let i = D.DISTRICTS.length - 1; i >= 0; i--) if (game.districtUnlocked(i)) { if (!S.district(D.DISTRICTS[i].id).cleared || i === D.DISTRICTS.length - 1) { this.sel = i; break; } }
       if (params.select !== undefined) this.sel = params.select;
-      this.upSel = 0; this.awardScroll = 0; this.quip = U.choice(["Coffee's decaf. Complaints go in the shredder.", 'The city drinks. We enforce. That is the deal.', 'Your blimp is fueled. Your paperwork is not. Get to it.', 'I once cited a man for sniffing a cork. Standards, Agent.', 'Every citation is a love letter to public safety.', 'Do not come back until the district is dry.']);
+      this.upSel = 0; this.awardScroll = 0; this.quip = U.choice(["Please stop calling the Capitol switchboard 'the war room.'", 'You do not need night vision goggles. Bars have lights.', 'How did the blimp get approved? I am genuinely asking.', 'A friendly reminder that you are, technically, a compliance officer.', 'Disagree better, Agent. Tackle gentler.', 'My wife says hi. Please do not give her a call sign.', "The Legislature would like the face paint to stop."]);
       A.music('hq'); A.setEngine(0); this.buildTabs(); this.buildContent(); S.write();
     }
     buildTabs() { this.tabButtons = TABS.map((t, i) => new UI.Button(80 + i * 200, 60, 190, 44, t, () => { this.tab = i; this.buildContent(); }, { key: String(i + 1), size: 22 })); }
@@ -17,8 +17,8 @@
       const p = S.profile; const items = [];
       if (this.tab === 0) {
         D.DISTRICTS.forEach((d, i) => { const b = new UI.Button(80, 130 + i * 62, 380, 52, `${i + 1}. ${d.name}`, () => { this.sel = i; this.buildContent(); }, { size: 19, color: i === this.sel ? '#2d4fa8' : '#1a2547', sub: ' ' }); b.enabled = this.game.districtUnlocked(i); items.push(b); });
-        const dep = new UI.Button(500, 560, 330, 60, 'DEPLOY THE SKYHAWK', () => this.deploy(), { size: 26, color: '#166534', key: 'E' }); dep.enabled = this.game.districtUnlocked(this.sel); items.push(dep);
-        items.push(new UI.Button(850, 560, 330, 60, 'REPLAY BRIEFING', () => { const d = D.DISTRICTS[this.sel]; this.game.setScene('story', { dialog: D.BRIEFINGS[this.sel], next: { scene: 'hq', params: { select: this.sel } } }); }, { size: 22, color: '#334155' }));
+        const dep = new UI.Button(500, 560, 330, 60, 'DEPLOY THE SEAGULL', () => this.deploy(), { size: 26, color: '#166534', key: 'E' }); dep.enabled = this.game.districtUnlocked(this.sel); items.push(dep);
+        const rep = new UI.Button(850, 560, 330, 60, 'REPLAY BRIEFING', () => { const d = D.DISTRICTS[this.sel]; this.game.setScene('story', { dialog: D.BRIEFINGS[this.sel], next: { scene: 'hq', params: { select: this.sel } } }); }, { size: 22, color: '#334155' }); rep.enabled = this.game.districtUnlocked(this.sel); items.push(rep);
       } else if (this.tab === 1) {
         D.UPGRADES.forEach((u, i) => { const col = i % 3, row = Math.floor(i / 3); const lvl = S.upgrade(u.id); const maxed = lvl >= u.costs.length; const cost = maxed ? 0 : u.costs[lvl]; const b = new UI.Button(80 + col * 380, 130 + row * 100, 360, 86, u.name, () => this.buy(u), { size: 20, sub: maxed ? 'MAXED' : `$${cost}`, color: maxed ? '#3f3f46' : (p.money >= cost ? '#1f3b8a' : '#2a2a3a') }); b.upgrade = u; items.push(b); });
       } else if (this.tab === 2) { items.push(new UI.Button(80, 130, 10, 10, '', null, {})); items[0].visible = false; }
@@ -77,12 +77,12 @@
       d.bars.forEach((b, i) => { const bs = S.bar(d.id, i); const col = i % 2; const x = 520 + col * 330; const yy = y + Math.floor(i / 2) * 26; if (bs.best) G.drawMedal(ctx, x + 8, yy - 4, 7, bs.best, this.t); else G.circle(ctx, x + 8, yy - 5, 6, bs.busted ? '#86efac' : '#334155', G.OUT, 1.5); G.text(ctx, b.name + (b.opt ? ' (optional)' : ''), x + 24, yy, { size: 14, color: bs.busted ? '#86efac' : '#e5e7eb', weight: '400' }); });
       y += Math.ceil(d.bars.length / 2) * 26 + 14;
       const bossState = ds.bossDefeated ? 'CITED ✔' : this.game.bossUnlocked(d) ? 'REVEALED — raid the lair!' : `hidden (bust ${d.required - this.game.bustedCount(d)} more bars)`;
-      G.text(ctx, `KINGPIN: ${d.boss.name} — ${bossState}`, 520, y, { size: 15, color: ds.bossDefeated ? '#86efac' : '#fca5a5' }); y += 26;
+      G.text(ctx, `KINGPIN: ${ds.bossDefeated || this.game.bossUnlocked(d) ? d.boss.name : '? ? ?'} — ${bossState}`, 520, y, { size: 15, color: ds.bossDefeated ? '#86efac' : '#fca5a5' }); y += 26;
       G.text(ctx, `Evidence folders: ${(ds.folders || []).length}/${d.folders}`, 520, y, { size: 14, color: '#cbd5e1', weight: '400' }); y += 30;
-      // commissioner quip
-      const ch = D.CHARACTERS.commissioner; G.drawPortrait(ctx, 520, y - 6, 90, 100, ch.look, { mood: 'angry', t: this.t, border: ch.color, scale: 2.2 });
+      // the Governor's quip
+      const ch = D.CHARACTERS.cox; G.drawPortrait(ctx, 520, y - 6, 90, 100, ch.look, { mood: 'neutral', t: this.t, border: ch.color, scale: 2.2 });
       UI.drawWrapped(ctx, '"' + this.quip + '"', 624, y + 30, 530, 20, { size: 15, color: '#fde68a', weight: '400' });
-      if (p.wonGame) G.text(ctx, '★ CITY SAVED — free play unlocked. Replay for gold medals!', 520, 530, { size: 14, color: '#86efac' });
+      if (p.wonGame) G.text(ctx, '★ LAKE SAVED — free play unlocked. Replay for gold medals!', 520, 530, { size: 14, color: '#86efac' });
     }
     drawUpgrades(ctx) {
       this.menu.draw(ctx, this.t);
@@ -100,7 +100,7 @@
     }
     drawRecords(ctx) {
       const st = S.profile.stats; const p = S.profile; UI.panel(ctx, 80, 120, 1120, 510, { title: 'CAREER RECORDS' });
-      const rows = [['Career score', U.fmtNum(p.score)], ['Citations issued', st.citations], ['Complaints filed against you', st.wrongCitations], ['Inspections conducted', st.inspections], ['Bars busted', st.barsBusted], ['Gold ratings', st.goldBars], ['IDs checked', st.idChecks], ['Suspects tackled', st.tackles], ['Suspects escaped', st.escaped], ['Perfect entries', st.perfectEntries], ['Kingpins cited', st.bossesBeaten], ['Drones downed', st.dronesDowned], ['Pigeons splatted', st.pigeons], ['Evidence folders', st.folders], ['Distance flown', (st.distanceFlown / 1000).toFixed(1) + ' km'], ['Blimp crashes', st.crashes], ['Time on shift', U.fmtTime(st.timePlayed)]];
+      const rows = [['Career score', U.fmtNum(p.score)], ['Citations issued', st.citations], ['Complaints filed against you', st.wrongCitations], ['Inspections conducted', st.inspections], ['Bars busted', st.barsBusted], ['Gold ratings', st.goldBars], ['IDs checked', st.idChecks], ['Suspects tackled', st.tackles], ['Suspects escaped', st.escaped], ['Perfect entries', st.perfectEntries], ['Kingpins cited', st.bossesBeaten], ['Drones downed', st.dronesDowned], ['Seagulls splatted', st.pigeons], ['Evidence folders', st.folders], ['Distance flown', (st.distanceFlown / 1000).toFixed(1) + ' km'], ['Blimp crashes', st.crashes], ['Time on shift', U.fmtTime(st.timePlayed)]];
       rows.forEach((r, i) => { const col = i % 2, row = Math.floor(i / 2); const x = 120 + col * 540, y = 190 + row * 46; G.text(ctx, r[0], x, y, { size: 17, color: '#cbd5e1', weight: '400' }); G.text(ctx, String(r[1]), x + 500, y, { size: 20, color: '#fde68a', align: 'right', font: 'title' }); });
     }
   }

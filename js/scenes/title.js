@@ -13,6 +13,7 @@
       const P = this.pal; const g = ctx.createLinearGradient(0, 0, 0, DABS.H); g.addColorStop(0, P.sky[0]); g.addColorStop(0.6, P.sky[1]); g.addColorStop(1, P.sky[2]); ctx.fillStyle = g; ctx.fillRect(0, 0, DABS.W, DABS.H);
       G.drawStars(ctx, t, 77, DABS.W, DABS.H * 0.7, 140);
       G.drawMoon(ctx, DABS.W - 220, 120, 46);
+      G.drawMountains(ctx, 7, DABS.H - 190, (scroll || 0) * 0.05, U.shade(P.sky[1], -0.4));
       for (let i = 0; i < 4; i++) G.drawCloud(ctx, ((i * 400 + t * 8 * (i + 1)) % (DABS.W + 300)) - 150, 120 + i * 60, 1 + i * 0.2, 'rgba(120,110,170,0.18)');
       const cols = [P.far, P.mid, P.near]; const speeds = [0.1, 0.25, 0.5];
       for (let l = 0; l < 3; l++) { const off = ((scroll || 0) * speeds[l]) % (DABS.W * 2); ctx.fillStyle = cols[l]; let wi = l * 100; for (const b of this.layers[l]) { let x = b.x - off; if (x < -400) x += DABS.W * 2; const y = DABS.H - b.h - (2 - l) * 40; ctx.fillStyle = cols[l]; ctx.fillRect(x, y, b.w, b.h + 200); if (b.ant) { ctx.fillRect(x + b.w / 2 - 2, y - 30, 4, 30); if (Math.sin(t * 4 + b.x) > 0.5) G.circle(ctx, x + b.w / 2, y - 32, 3, '#ff4444'); } if (l > 0) { const cw = 12 * l, ch = 16 * l; for (let wy = y + 12; wy < DABS.H - 20; wy += ch + 8 * l) for (let wx = x + 8; wx < x + b.w - cw; wx += cw + 8 * l) { const rr = this.wins[(wi++) % 400]; if (rr < 0.45) { ctx.fillStyle = rr < 0.1 ? P.neon[Math.floor(rr * 30) % P.neon.length] : `rgba(255,220,150,${0.35 + rr})`; ctx.fillRect(wx, wy, cw, ch); } } } } }
@@ -22,7 +23,7 @@
     constructor(game, params) {
       this.game = game; this.t = 0; this.sky = new DABS.Skyline(12345); this.mode = 'menu'; this.blimpX = -300; this.parts = new G.Particles(); this.scroll = 0;
       A.music('title'); this.buildMenu();
-      this.taglines = ['Enforce responsibly.', 'Last call is OUR call.', 'Serving justice, neat.', 'You are the designated driver of destiny.', 'Have you checked YOUR ID today?'];
+      this.taglines = ['Tier-one beverage operators.', 'Last call is OUR call. It is at 1 a.m.', 'Serving justice, 1.5 ounces at a time.', 'This is the place. Is that your drink?', 'We answer to the Governor. He wishes we would not.', 'Did you order food with that?'];
       this.tagline = U.choice(this.taglines);
     }
     buildMenu() {
@@ -53,14 +54,14 @@
       ctx.save(); ctx.translate(DABS.W / 2, 190); ctx.rotate(-0.03);
       G.neon(ctx, 'D.A.B.S.', 0, 0, { size: 150, color: '#ff3cac', glow: 40, flicker: flick });
       ctx.restore();
-      G.neon(ctx, 'DEPARTMENT OF BEVERAGE SERVICES', DABS.W / 2, 292, { size: 36, color: '#06d6a0', glow: 18, flicker: 1 });
-      G.text(ctx, this.tagline, DABS.W / 2, 340, { size: 22, color: '#fde68a', align: 'center', font: 'title', shadow: true });
+      G.neon(ctx, 'DEPARTMENT OF ALCOHOLIC BEVERAGE SERVICES', DABS.W / 2, 292, { size: 34, color: '#06d6a0', glow: 18, flicker: 1 });
+      G.text(ctx, 'STATE OF UTAH  •  SPECIAL COMPLIANCE AIR WING', DABS.W / 2, 322, { size: 14, color: 'rgba(255,255,255,0.65)', align: 'center' }); G.text(ctx, this.tagline, DABS.W / 2, 356, { size: 22, color: '#fde68a', align: 'center', font: 'title', shadow: true });
       // badge
       G.drawBadge(ctx, 140, 560, 70); G.drawBadge(ctx, DABS.W - 140, 560, 70);
       if (this.mode === 'menu') { this.menu.draw(ctx, this.t); }
       else if (this.mode === 'confirm') { ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, DABS.W, DABS.H); UI.panel(ctx, DABS.W / 2 - 300, 260, 600, 230, { title: 'ERASE SAVE?' }); G.text(ctx, 'Starting a new game erases your current career. Are you sure?', DABS.W / 2, 340, { size: 18, color: '#e5e7eb', align: 'center', weight: '400' }); this.confirmMenu.draw(ctx, this.t); }
       else if (this.mode === 'help') { this.drawHelp(ctx); }
-      else if (this.mode === 'credits') { ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(0, 0, DABS.W, DABS.H); UI.panel(ctx, DABS.W / 2 - 320, 160, 640, 400, { title: 'CREDITS' }); D.CREDITS.forEach((l, i) => G.text(ctx, l, DABS.W / 2, 230 + i * 34, { size: i === 0 ? 24 : 18, color: i === 0 ? '#fde68a' : '#e5e7eb', align: 'center', weight: i === 0 ? '900' : '400' })); G.text(ctx, '[Esc] back', DABS.W / 2, 530, { size: 14, color: '#94a3b8', align: 'center' }); }
+      else if (this.mode === 'credits') { ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(0, 0, DABS.W, DABS.H); UI.panel(ctx, DABS.W / 2 - 320, 160, 640, 400, { title: 'CREDITS' }); D.CREDITS.forEach((l, i) => { const hi = i === 0 || i === D.CREDITS.length - 1; G.text(ctx, l, DABS.W / 2, 226 + i * 30, { size: i === 0 ? 24 : hi ? 20 : 18, color: hi ? '#fde68a' : '#e5e7eb', align: 'center', weight: hi ? '900' : '400' }); }); G.text(ctx, '[Esc] back', DABS.W / 2, 530, { size: 14, color: '#94a3b8', align: 'center' }); }
       const p = S.profile; if (this.mode === 'menu') { G.text(ctx, `Rank: ${D.rankFor(p.xp).rank.name}   •   Career score: ${U.fmtNum(p.score)}   •   Awards: ${Object.keys(p.achievements).length}/${D.ACHIEVEMENTS.length}`, DABS.W / 2, DABS.H - 40, { size: 15, color: 'rgba(255,255,255,0.6)', align: 'center' }); G.text(ctx, 'M: toggle sound   •   Esc: pause in-game', DABS.W / 2, DABS.H - 18, { size: 13, color: 'rgba(255,255,255,0.4)', align: 'center' }); }
       UI.drawVignette(ctx, 0.45);
     }
