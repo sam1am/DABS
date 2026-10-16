@@ -15,6 +15,7 @@
   };
   const mkName = (r) => r.pick(D.FIRST) + ' ' + r.pick(D.LAST);
   const DRINKS = ['beer', 'wine', 'cocktail', 'mug'];
+  const FLEE_MIN = 2.6; // seconds a runner must take to reach the exit; closer ones bolt the wrong way first
 
   class BarScene {
     constructor(game, params) {
@@ -136,7 +137,7 @@
         if (Array.isArray(subject.cited)) { subject.cited.push(type); if (!subject.isBartender && subject.state === 'idle' && subject.skittish && Math.random() < (0.55 - 0.1 * S.upgrade('badge'))) { this.flee(subject, 'cite'); this.closePanel(); subject.pendingCite = type; return; } }
         this.registerCite(type, subject, name);
         if (!subject.isBartender && Array.isArray(subject.viol)) { subject.state = 'cited'; subject.mood = 'sad'; subject.holding = 'paper'; subject.fx = 'none'; subject.sway = 0; this.say(subject, U.choice(D.CITED_LINES)); if (subject.leaveAt !== null) subject.leaveAt = null; }
-        if (subject.isBartender) { subject.mood = 'sad'; this.say(subject, U.choice(D.CITED_LINES)); if (type === 'NO_ID_CHECK') subject.evidence = 0; }
+        if (subject.isBartender) { subject.mood = 'sad'; this.say(subject, U.choice(D.CITED_LINES)); if (type === 'NO_ID_CHECK') subject.evidence = 0; if (type === 'ON_DUTY') { subject.drinks = false; subject.sipping = 0; subject.sip = 0; if (subject.holding === 'flask') subject.holding = 'rag'; } }
         this.closePanel();
       } else {
         this.complaint(subject, type);
@@ -158,7 +159,7 @@
       if (this.complaints >= 3) { this.endT = 1.5; this.endReason = 'ia'; this.banner.show('INTERNAL AFFAIRS', 'Three complaints. You are pulled from the bar.', 3, '#f87171'); A.sfx('siren'); }
       else this.game.toasts.add(`Complaint filed (${this.complaints}/3). Internal Affairs is watching.`, '#f87171', 2.5);
     }
-    flee(p, why) { p.state = 'fleeing'; p.pose = 'idle'; p.sit = false; p.mood = 'scared'; p.fx = 'sweat'; p.sway = 0; p.facing = 1; p.speed = 175 + this.di * 18; A.sfx('flee'); this.say(p, U.choice(D.FLEE_LINES)); this.game.toasts.add(`${p.name} is running for the exit! SHIFT to sprint, SPACE to tackle!`, '#fde047', 3); if (this.panel && this.panel.target.p === p) this.closePanel(); }
+    flee(p, why) { p.state = 'fleeing'; p.pose = 'idle'; p.sit = false; p.mood = 'scared'; p.fx = 'sweat'; p.sway = 0; p.speed = 175 + this.di * 18; const eta = (this.exit.x - 20 - p.x) / p.speed; p.panicT = eta < FLEE_MIN ? (FLEE_MIN - eta) / 2 : 0; p.facing = p.panicT > 0 ? -1 : 1; A.sfx('flee'); this.say(p, U.choice(D.FLEE_LINES)); this.game.toasts.add(`${p.name} is running for the exit! SHIFT to sprint, SPACE to tackle!`, '#fde047', 3); if (this.panel && this.panel.target.p === p) this.closePanel(); }
     say(p, text, dur) { p.bubble = { text, t: dur || 2.5 }; }
     tackle() {
       const a = this.agent; if (a.tackleT > 0) return; a.tackleT = 0.32; a.pose = 'tackle'; A.sfx('swoosh'); const range = 70 + 28 * S.upgrade('tackle'); a.vx = a.facing * 520;
@@ -213,7 +214,7 @@
         } else if (p.state === 'leaving') {
           p.x += 62 * dt; p.walking = true; p.walk += dt * 8; p.facing = 1; if (p.x >= this.exit.x - 20) { p.state = 'gone'; if (p.viol.includes('OPEN_CONTAINER') && !p.cited.includes('OPEN_CONTAINER')) { this.log.push({ ok: false, text: `${p.name} walked out with an open container` }); this.game.toasts.add('Open container escaped out the door!', '#f87171', 2.5); A.sfx('siren'); this.shake = 0.4; } }
         } else if (p.state === 'fleeing') {
-          p.x += p.speed * dt; p.walking = true; p.walk += dt * 16; if (p.x >= this.exit.x - 20) { p.state = 'gone'; this.escapes++; S.profile.stats.escaped++; this.run().escapes++; A.sfx('error'); this.game.toasts.add(`${p.name} escaped! Violation lost.`, '#f87171', 3); this.log.push({ ok: false, text: `${p.name} escaped through the exit` }); p.pendingCite = null; }
+          const dir = p.panicT > 0 ? -1 : 1; if (p.panicT > 0) p.panicT -= dt; p.x = Math.max(70, p.x + dir * p.speed * dt); p.facing = dir; p.walking = true; p.walk += dt * 16; if (p.x >= this.exit.x - 20) { p.state = 'gone'; this.escapes++; S.profile.stats.escaped++; this.run().escapes++; A.sfx('error'); this.game.toasts.add(`${p.name} escaped! Violation lost.`, '#f87171', 3); this.log.push({ ok: false, text: `${p.name} escaped through the exit` }); p.pendingCite = null; }
         }
       }
     }
@@ -223,7 +224,7 @@
       const b = this.bartender; if (b.bubble) { b.bubble.t -= dt; if (b.bubble.t <= 0) b.bubble = null; }
       if (b.evidence > 0) { b.evidence -= dt; b.fx = 'alert'; if (b.evidence <= 0) { b.fx = null; if (!b.cited.includes('NO_ID_CHECK')) { /* another chance later */ } } } else if (b.fx === 'alert') b.fx = null;
       if (b.sipping > 0) { b.sipping -= dt; b.holding = 'flask'; b.sip = b.sipping > 1 ? 1 : b.sipping; if (b.sipping <= 0) { b.holding = 'rag'; b.sip = 0; } }
-      if (b.drinks) { b.sipT -= dt; if (b.sipT <= 0 && b.sipping <= 0) { b.sipT = U.rand(5, 9); b.sipping = 2.2; A.sfx('pour'); this.say(b, U.choice(["Don't tell the boss.", 'Quality control!', 'Just a sip.']), 2); } }
+      if (b.drinks) { b.sipT -= dt; if (b.sipT <= 0 && b.sipping <= 0) { b.sipT = U.rand(5, 9); b.sipping = 2.2; b.drank = true; A.sfx('pour'); this.say(b, U.choice(["Don't tell the boss.", 'Quality control!', 'Just a sip.']), 2); } }
       // serving loop
       if (b.state === 'idle') { b.serveT -= dt; if (b.serveT <= 0) { const seated = this.patrons.filter(p => p.sit && p.state === 'idle' && p.holding && p.holding !== 'soda' && p.holding !== 'coffee'); if (seated.length || this.laxTargets().length) { let tgt; if (b.lax && !b.cited.includes('NO_ID_CHECK') && (this.firstLaxDone !== true || Math.random() < 0.6)) { const ys = this.laxTargets(); tgt = ys.length ? U.choice(ys) : (seated.length ? U.choice(seated) : null); } else tgt = seated.length ? U.choice(seated) : null; if (tgt) { b.target = tgt; b.state = 'walking'; } } b.serveT = b.lax && !this.firstLaxDone ? 5 : U.rand(8, 13); } }
       else if (b.state === 'walking') { if (this.panel && this.panel.target.p === b) { b.walking = false; return; } const dx = b.target.x - b.x; if (Math.abs(dx) > 6) { b.x += Math.sign(dx) * 110 * dt; b.facing = Math.sign(dx); b.walk += dt * 9; b.walking = true; } else { b.walking = false; b.state = 'serving'; b.serveAnim = 1.6; b.holding = 'beer'; const p = b.target; if (p.young) { if (b.lax && !b.cited.includes('NO_ID_CHECK')) { this.say(b, U.choice(["ID? Nah, you're good.", 'You look... old enough.', "I've seen you since you were 12!"]), 2.5); b.evidence = 8 + 2 * S.upgrade('badge'); this.firstLaxDone = true; A.sfx('warn'); this.game.toasts.add('The bartender skipped the ID check! Cite them while the ! is up.', '#fde047', 3); } else { this.say(b, 'ID?', 1.5); this.say(p, 'Here you go...', 1.5); } } else this.say(b, U.choice(['Here ya go!', 'Enjoy!', 'On your tab.']), 1.5); } }
@@ -351,7 +352,7 @@
         G.text(ctx, p.isBartender ? 'BARTENDER' : p.staff ? 'STAFF' : 'PATRON', x + 140, y + 36, { size: 13, color: '#94a3b8' }); G.text(ctx, p.name, x + 140, y + 62, { size: 24, color: '#fde68a', font: 'title' });
         const obs = [];
         if (!p.isBartender) { obs.push(p.young ? 'Baby-faced. Could be 19, could be 29.' : p.old ? 'Old enough to remember private club memberships.' : 'Looks like a functioning adult.'); obs.push(`Glasses in front: ${p.drinks}${p.sodas ? ' (all soda, with straws)' : ''}`); obs.push(`Sway: ${p.sway > 0.7 ? 'HEAVY' : p.sway > 0.4 ? 'moderate' : p.sway > 0 ? 'slight' : 'none'}${p.fx === 'music' ? ' (dancing to the jukebox)' : p.drunk ? ' (hiccuping, spirals)' : ''}`); obs.push(`Holding: ${p.holding || 'nothing'}${p.holding === 'flask' ? ' — on shift?!' : ''}`); if (p.staff) obs.push('Wearing a staff apron.'); if (p.state === 'leaving') obs.push('Heading for the EXIT.'); obs.push(p.idKnown ? p.idText : 'ID: not checked'); }
-        else { obs.push(p.lax && p.evidence > 0 ? '!!! Just served a youthful patron WITHOUT checking ID.' : 'Mixing drinks behind the Zion Curtain. Checks IDs... sometimes?'); obs.push(p.sipping > 0 ? 'Currently sipping from a FLASK.' : `Holding: ${p.holding}`); obs.push(`Cited: ${p.cited.length ? p.cited.map(v => D.VIOLATIONS[v].short).join(', ') : 'none'}`); }
+        else { obs.push(p.lax && p.evidence > 0 ? '!!! Just served a youthful patron WITHOUT checking ID.' : 'Mixing drinks behind the Zion Curtain. Checks IDs... sometimes?'); obs.push(p.sipping > 0 ? 'Currently sipping from a FLASK.' : p.cited.includes('ON_DUTY') ? `Holding: ${p.holding}. Flask confiscated.` : p.drank ? 'Flask stashed under the bar. Schnapps breath.' : `Holding: ${p.holding}`); obs.push(`Cited: ${p.cited.length ? p.cited.map(v => D.VIOLATIONS[v].short).join(', ') : 'none'}`); }
         obs.forEach((o, i) => G.text(ctx, '• ' + o, x + 140, y + 92 + i * 21, { size: 14, color: o.startsWith('!!!') ? '#fde047' : (o.includes('UNDERAGE') || o.includes('FAKE')) ? '#f87171' : '#e5e7eb', weight: '400', maxWidth: 280 }));
         if (P.mode === 'checking') { UI.bar(ctx, x + 20, y + 300, w - 40, 22, P.checkT / this.idTime(), '#60a5fa', null, 'SCANNING ID...', { size: 14 }); G.text(ctx, 'Hologram... beehive... birth year...', x + w / 2, y + 350, { size: 14, color: '#94a3b8', align: 'center' }); }
         else if (P.mode === 'cite') G.text(ctx, 'Select violation to cite:', x + 20, y + 218, { size: 15, color: '#fca5a5' });
