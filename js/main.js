@@ -9,7 +9,7 @@
     window.addEventListener('error', (e) => { errDiv.style.display = 'block'; errDiv.textContent += (e.message || e) + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno + '\n'; });
     const resize = () => { const s = Math.min(window.innerWidth / DABS.W, window.innerHeight / DABS.H); canvas.style.width = Math.floor(DABS.W * s) + 'px'; canvas.style.height = Math.floor(DABS.H * s) + 'px'; };
     window.addEventListener('resize', resize); resize();
-    I.init(canvas); S.load(); A.muted = !!S.profile.muted;
+    I.init(canvas); DABS.touch.init(canvas); S.load(); A.muted = !!S.profile.muted;
     if (document.fonts && document.fonts.load) { document.fonts.load("normal 40px 'Bangers'"); document.fonts.load("700 20px 'Nunito'"); }
     const params = new URLSearchParams(location.search); const start = params.get('scene') || 'title';
     const sp = {}; params.forEach((v, k) => { sp[k] = isNaN(v) ? v : Number(v); });
@@ -33,11 +33,11 @@
     game.fade.dir = 1; game.fade.cb = () => { game.createScene(name, params); game.fade.dir = -1; };
   };
   game.frame = function (dt) {
-    game.t += dt; const sc = game.scene;
+    game.t += dt; const sc = game.scene; I.pollPads(); DABS.touch.update(game);
     // pause
-    if (sc && sc.pausable && I.justPressed('pause') && !game.fade.cb) { game.togglePause(); }
-    if (I.justPressed('mute')) { const m = A.toggleMute(); S.profile.muted = m; S.write(); game.toasts.add(m ? 'Sound muted (M)' : 'Sound on (M)', '#a5b4fc', 1.5); }
-    if (game.paused) game.updatePause(dt); else if (sc && !game.fade.cb) sc.update(dt); else if (sc && game.fade.cb && sc.updateWhileFading) sc.update(dt);
+    let toggled = false; if (sc && sc.pausable && I.justPressed('pause') && !game.fade.cb) { game.togglePause(); toggled = true; }
+    if (I.justPressed('mute')) { const m = A.toggleMute(); S.profile.muted = m; S.write(); game.toasts.add(`${m ? 'Sound muted' : 'Sound on'} (${I.label('mute')})`, '#a5b4fc', 1.5); }
+    if (game.paused) { if (!toggled) game.updatePause(dt); } else if (sc && !game.fade.cb) sc.update(dt); else if (sc && game.fade.cb && sc.updateWhileFading) sc.update(dt);
     // fade
     const f = game.fade; if (f.dir !== 0) { f.a += f.dir * f.speed * dt; if (f.a >= 1 && f.dir > 0) { f.a = 1; const cb = f.cb; f.cb = null; if (cb) cb(); } if (f.a <= 0 && f.dir < 0) { f.a = 0; f.dir = 0; } }
     game.toasts.update(dt);
@@ -46,10 +46,12 @@
     const ctx = game.ctx; ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, DABS.W, DABS.H);
     if (game.scene) game.scene.draw(ctx, game.t);
     ctx.restore(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    DABS.touch.draw(ctx);
     if (game.paused) game.drawPause(ctx);
     game.toasts.draw(ctx, DABS.W / 2, DABS.H - 130);
     if (A.muted) G.text(ctx, '🔇', DABS.W - 16, 30, { size: 20, align: 'right', alpha: 0.6 });
     if (f.a > 0) { ctx.fillStyle = `rgba(0,0,0,${f.a})`; ctx.fillRect(0, 0, DABS.W, DABS.H); }
+    DABS.touch.drawRotate(ctx);
     I.endFrame();
   };
   // ---------- Pause ----------
@@ -57,12 +59,12 @@
     game.paused = !game.paused; A.sfx('click');
     if (game.paused) {
       A.setEngine(0);
-      const bx = DABS.W / 2 - 160, by = 250; const items = [];
-      items.push(new UI.Button(bx, by, 320, 54, 'RESUME', () => { game.paused = false; }, { key: '1' }));
-      if (game.sceneName !== 'hq') items.push(new UI.Button(bx, by + 66, 320, 54, 'RETURN TO HQ', () => { game.paused = false; game.abortToHQ(); }, { key: '2' }));
-      items.push(new UI.Button(bx, by + 132, 320, 54, A.muted ? 'SOUND: OFF' : 'SOUND: ON', (b) => { const m = A.toggleMute(); S.profile.muted = m; S.write(); b.label = m ? 'SOUND: OFF' : 'SOUND: ON'; }, { key: '3' }));
-      items.push(new UI.Button(bx, by + 198, 320, 54, 'FULLSCREEN', () => { game.fullscreen(); }, { key: '4' }));
-      items.push(new UI.Button(bx, by + 264, 320, 54, 'QUIT TO TITLE', () => { game.paused = false; S.write(); game.setScene('title'); }, { key: '5', color: '#7f1d1d' }));
+      const bx = DABS.W / 2 - 160, by = 250; const items = []; let k = 1;
+      items.push(new UI.Button(bx, by, 320, 54, 'RESUME', () => { game.paused = false; }, { act: 'back' }));
+      if (game.sceneName !== 'hq') items.push(new UI.Button(bx, by + 66, 320, 54, 'RETURN TO HQ', () => { game.paused = false; game.abortToHQ(); }, { key: String(k++) }));
+      items.push(new UI.Button(bx, by + 132, 320, 54, A.muted ? 'SOUND: OFF' : 'SOUND: ON', (b) => { const m = A.toggleMute(); S.profile.muted = m; S.write(); b.label = m ? 'SOUND: OFF' : 'SOUND: ON'; }, { key: String(k++) }));
+      items.push(new UI.Button(bx, by + 198, 320, 54, 'FULLSCREEN', () => { game.fullscreen(); }, { key: String(k++) }));
+      items.push(new UI.Button(bx, by + 264, 320, 54, 'QUIT TO TITLE', () => { game.paused = false; S.write(); game.setScene('title'); }, { key: String(k++), color: '#7f1d1d' }));
       game.pauseMenu = new UI.Menu(items);
     }
   };

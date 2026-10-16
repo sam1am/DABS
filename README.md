@@ -36,14 +36,20 @@ Progress saves automatically to your browser's localStorage. (The Utah revamp us
 
 ## Controls
 
-| Context | Keys |
-|---|---|
-| Menus | Arrows / mouse, Enter, number hotkeys, Esc back |
-| Blimp flight | WASD / arrows to fly, **Space** citation cannon, **E** rappel into a glowing bar or dock at HQ |
-| Rappel | A/D steer, S drop faster, W slow down, **Space** crash through the target window |
-| Inspection | A/D walk, **E** inspect, **W+E** target the bartender or wall items, Shift sprint (stamina; get winded and you slow down), **Space** tackle a runner, 1–6 panel choices, **E** at the EXIT door to leave early |
-| Showdowns | A/D move, **W** jump, **Space** throw citations |
-| Anywhere | Esc pause, M mute |
+Keyboard and gamepad (Xbox / PlayStation layouts, any controller the browser exposes with the standard mapping) both work; on-screen hints switch to whichever you used last.
+
+| Context | Keyboard | Gamepad |
+|---|---|---|
+| Menus | Arrows / mouse to move, **Enter** confirm, number hotkeys, **Esc** back | D-pad / left stick, **A** confirm, **B** back |
+| HQ | **Q / E** switch tabs, **Enter** deploy / buy, **R** replay briefing | **LB / RB** tabs, **A** deploy / buy, **Y** replay briefing |
+| Blimp flight | WASD / arrows to fly, **Space** citation cannon, **E** rappel into a glowing bar or dock at HQ | Left stick, **X** cannon, **A** rappel / dock |
+| Rappel | A/D steer, S drop faster, W slow down, **Space** crash through the target window | Left stick, **X** crash through |
+| Inspection | A/D walk, **E** inspect, **W+E** target the bartender or wall items, Shift sprint (stamina; get winded and you slow down), **Space** tackle a runner, number keys for panel choices, **E** at the EXIT door to leave early | Left stick, **A** inspect, **↑+A** bartender / wall, **RT** sprint, **X** tackle |
+| Showdowns | A/D move, **W** jump, **Space** throw citations | Left stick, **A** jump, **X** throw |
+| Dialogue | **Enter / Space** next, **Esc** skip | **A** next, **B** skip |
+| Anywhere | **Esc** pause (and back out of any menu or panel), M mute | **Start** pause, **B** back, **View** mute |
+
+On phones and tablets (landscape), a floating stick appears wherever you put your left thumb, and the right side shows that scene's buttons: **FIRE / USE** in flight, **GO** to crash through on the rappel, **USE / TACKLE** in bars (push the stick to its rim to sprint; hold it up while tapping USE for the bartender or wall items), and **THROW / JUMP** in showdowns, plus **❚❚** to pause. Menus, panels and dialogue are tapped directly. Fullscreen (from the pause menu) gives the most room.
 
 ## Structure
 

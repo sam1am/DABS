@@ -34,14 +34,14 @@
       items.push(new UI.Button(bx, by + 60 * (has ? 3 : 2), 300, 50, 'CREDITS', () => { this.mode = 'credits'; }, { key: String(k++) }));
       this.menu = new UI.Menu(items);
       const cy = DABS.H - 60;
-      this.confirmMenu = new UI.Menu([new UI.Button(DABS.W / 2 - 230, 400, 220, 50, 'YES, ERASE', () => this.newGame(), { key: '1', color: '#7f1d1d' }), new UI.Button(DABS.W / 2 + 10, 400, 220, 50, 'NO, KEEP IT', () => { this.mode = 'menu'; }, { key: '2' })]);
+      this.confirmMenu = new UI.Menu([new UI.Button(DABS.W / 2 - 230, 400, 220, 50, 'YES, ERASE', () => this.newGame(), { key: '1', color: '#7f1d1d' }), new UI.Button(DABS.W / 2 + 10, 400, 220, 50, 'NO, KEEP IT', () => { this.mode = 'menu'; }, { act: 'back' })], { row: true });
     }
     newGame() { S.reset(); A.muted = false; this.game.setScene('story', { intro: true }); }
     continueGame() { const p = S.profile; if (!p.seenIntro) this.game.setScene('story', { intro: true }); else this.game.setScene('hq'); }
     update(dt) {
       this.t += dt; this.scroll += dt * 12; this.blimpX += dt * 28; if (this.blimpX > DABS.W + 300) this.blimpX = -300;
       if (this.mode === 'menu') this.menu.update(dt);
-      else if (this.mode === 'confirm') { this.confirmMenu.update(dt); if (I.justPressed('back')) this.mode = 'menu'; }
+      else if (this.mode === 'confirm') { this.confirmMenu.update(dt); }
       else if (this.mode === 'help') { if (I.justPressed('back') || I.justPressed('confirm') || I.mouse.clicked) { A.sfx('click'); this.mode = 'menu'; } }
       else if (this.mode === 'credits') { if (I.justPressed('back') || I.justPressed('confirm') || I.mouse.clicked) { A.sfx('click'); this.mode = 'menu'; } }
       this.parts.update(dt);
@@ -61,14 +61,14 @@
       if (this.mode === 'menu') { this.menu.draw(ctx, this.t); }
       else if (this.mode === 'confirm') { ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, DABS.W, DABS.H); UI.panel(ctx, DABS.W / 2 - 300, 260, 600, 230, { title: 'ERASE SAVE?' }); G.text(ctx, 'Starting a new game erases your current career. Are you sure?', DABS.W / 2, 340, { size: 18, color: '#e5e7eb', align: 'center', weight: '400' }); this.confirmMenu.draw(ctx, this.t); }
       else if (this.mode === 'help') { this.drawHelp(ctx); }
-      else if (this.mode === 'credits') { ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(0, 0, DABS.W, DABS.H); UI.panel(ctx, DABS.W / 2 - 320, 160, 640, 400, { title: 'CREDITS' }); D.CREDITS.forEach((l, i) => { const hi = i === 0 || i === D.CREDITS.length - 1; G.text(ctx, l, DABS.W / 2, 226 + i * 30, { size: i === 0 ? 24 : hi ? 20 : 18, color: hi ? '#fde68a' : '#e5e7eb', align: 'center', weight: hi ? '900' : '400' }); }); G.text(ctx, '[Esc] back', DABS.W / 2, 530, { size: 14, color: '#94a3b8', align: 'center' }); }
-      const p = S.profile; if (this.mode === 'menu') { G.text(ctx, `Rank: ${D.rankFor(p.xp).rank.name}   •   Career score: ${U.fmtNum(p.score)}   •   Awards: ${Object.keys(p.achievements).length}/${D.ACHIEVEMENTS.length}`, DABS.W / 2, DABS.H - 40, { size: 15, color: 'rgba(255,255,255,0.6)', align: 'center' }); G.text(ctx, 'M: toggle sound   •   Esc: pause in-game', DABS.W / 2, DABS.H - 18, { size: 13, color: 'rgba(255,255,255,0.4)', align: 'center' }); }
+      else if (this.mode === 'credits') { ctx.fillStyle = 'rgba(0,0,0,0.65)'; ctx.fillRect(0, 0, DABS.W, DABS.H); UI.panel(ctx, DABS.W / 2 - 320, 160, 640, 400, { title: 'CREDITS' }); D.CREDITS.forEach((l, i) => { const hi = i === 0 || i === D.CREDITS.length - 1; G.text(ctx, l, DABS.W / 2, 226 + i * 30, { size: i === 0 ? 24 : hi ? 20 : 18, color: hi ? '#fde68a' : '#e5e7eb', align: 'center', weight: hi ? '900' : '400' }); }); UI.hintsRow(ctx, DABS.W / 2, 530, [['back', 'back']], { size: 14, color: '#94a3b8', align: 'center' }); }
+      const p = S.profile; if (this.mode === 'menu') { G.text(ctx, `Rank: ${D.rankFor(p.xp).rank.name}   •   Career score: ${U.fmtNum(p.score)}   •   Awards: ${Object.keys(p.achievements).length}/${D.ACHIEVEMENTS.length}`, DABS.W / 2, DABS.H - 40, { size: 15, color: 'rgba(255,255,255,0.6)', align: 'center' }); ctx.save(); ctx.globalAlpha = 0.5; UI.hintsRow(ctx, DABS.W / 2, DABS.H - 14, [['nav', 'select'], ['confirm', 'confirm'], ['mute', 'toggle sound'], ['pause', 'pause in-game']], { size: 12, align: 'center' }); ctx.restore(); }
       UI.drawVignette(ctx, 0.45);
     }
     drawHelp(ctx) {
       ctx.fillStyle = 'rgba(0,0,0,0.7)'; ctx.fillRect(0, 0, DABS.W, DABS.H); UI.panel(ctx, 60, 40, DABS.W - 120, DABS.H - 80, { title: 'FIELD MANUAL' });
-      let y = 100; for (const [h, body] of D.HOW_TO_PLAY) { G.text(ctx, h, 100, y, { size: 22, color: '#fde68a', font: 'title' }); y += 8; y += UI.drawWrapped(ctx, body, 100, y + 20, DABS.W - 200, 22, { size: 16, color: '#e5e7eb', weight: '400' }) + 16; }
-      G.text(ctx, '[Esc / Click] back', DABS.W / 2, DABS.H - 60, { size: 14, color: '#94a3b8', align: 'center' });
+      let y = 100; for (const [h, body] of D.HOW_TO_PLAY) { G.text(ctx, h, 100, y, { size: 22, color: '#fde68a', font: 'title' }); y += 8; y += UI.drawWrapped(ctx, I.fmt(body), 100, y + 20, DABS.W - 200, 22, { size: 16, color: '#e5e7eb', weight: '400' }) + 16; }
+      UI.hintsRow(ctx, DABS.W / 2, DABS.H - 60, [['back', 'back']], { size: 14, color: '#94a3b8', align: 'center' });
     }
   }
   DABS.scenes.title = TitleScene;

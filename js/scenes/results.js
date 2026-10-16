@@ -39,7 +39,7 @@
         items.push(new UI.Button(DABS.W / 2 - 330, 610, 320, 56, 'RETRY SHOWDOWN', () => this.game.setScene('boss', { district: this.di, entry: 'good', airship: p.airship }), { key: '1', size: 22, color: '#7f1d1d' }));
         items.push(new UI.Button(DABS.W / 2 + 10, 610, 320, 56, 'RETREAT TO BLIMP', () => this.game.setScene('city', { district: this.di, fromBoss: true }), { key: '2', size: 22 }));
       }
-      this.menu = new UI.Menu(items);
+      this.menu = new UI.Menu(items, { row: true });
     }
     afterBoss() {
       const di = this.di; const last = di === D.DISTRICTS.length - 1;

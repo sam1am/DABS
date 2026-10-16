@@ -164,19 +164,19 @@
       { who: 'cox', text: "I'm not Eagle One. You inspect bars. It's a compliance job. There's a checklist. Why does the Department have a blimp?" },
       { who: 'cox', text: "Okay. State Street. We're getting complaints: minors served, folks over-served, licenses older than I am. Check IDs, write the citations, and please don't cite innocent people. I read every complaint personally. It ruins my evenings." },
       { who: 'cox', text: "Bust four bars and whoever is supplying them will have to show himself. We don't have a name. We have a business card. It smells like a terrarium." },
-      { who: 'radio', text: "Dispatch here, Operator! Controls: WASD or Arrows to fly, E to rappel over a glowing bar, SPACE fires the Citation Cannon. Pause with ESC. This is the coolest job in state government!" },
+      { who: 'radio', text: "Dispatch here, Operator! Controls: {fly} to fly, {interact} to rappel over a glowing bar, {fire} fires the Citation Cannon. Pause with {pause}. This is the coolest job in state government!" },
     ],
     [
       { who: 'cox', text: "Hal's sales ledger shows four hundred kegerators delivered to Point of the Mountain, billed as 'gaming PCs.' Where the buyer's name goes, somebody just drew an exclamation point." },
       { who: 'cox', text: "Silicon Slopes. The startups are passing fake IDs and running something called 'bottomless kombucha hour.' Happy hour is illegal in Utah, Agent. Check the promo boards, and cite any bartender who skips an ID check while the evidence is fresh." },
       { who: 'agent', text: 'Solid copy, Eagle One. Stacking up on the kombucha.' },
       { who: 'cox', text: "Please don't stack up on anything." },
-      { who: 'radio', text: "Heads up: Valley Tan drones are in the airspace now. They drop kegs. SPACE to engage. Evidence folders float around too, grab 'em for cash!" },
+      { who: 'radio', text: "Heads up: Valley Tan drones are in the airspace now. They drop kegs. {fire} to engage. Evidence folders float around too, grab 'em for cash!" },
     ],
     [
       { who: 'cox', text: "That hard drive had one file on it: 'OPERATION SALTED RIM.' It was a spreadsheet of lime prices and the words 'TOTALLY AWESOME' four thousand times." },
       { who: 'cox', text: "Park City next. Folks are walking out of bars onto Main Street with open drinks. During the film festival. There are critics present, Agent." },
-      { who: 'cox', text: "People run when you cite them up there. SHIFT to chase, SPACE to tackle. Gently. Somebody up there is hosting an unlicensed pong tournament. A celebrity, apparently. My staff won't tell me who. They said I'd make it weird." },
+      { who: 'cox', text: "People run when you cite them up there. {sprint} to chase, {action} to tackle. Gently. Somebody up there is hosting an unlicensed pong tournament. A celebrity, apparently. My staff won't tell me who. They said I'd make it weird." },
       { who: 'radio', text: "Chopper 5 is up covering the festival and it does NOT yield to blimps. Stay frosty, Seagull. That's a ski joke and a tactical term." },
     ],
     [
@@ -220,11 +220,11 @@
     lizard: ['ZERO DOWN! ZERO MERCY!', 'I AM A NORMAL HUMAN DEALER!'], dell: ['TOTALLY AWESOME!', 'SUPER DELL CANNOT BE GROUNDED!'], posty: ['Sorry in advance, bro!', 'RE-RACK! EVERYBODY IN!'], whale: ['THAR I BLOW!', 'RELEASE THE GULLS!'], skin: ['Who am I now?', 'LIGHTS OUT, AGENT.'], brigham: ['RELEASE THE VALLEY TAN!', 'NOT THE BEARD!'],
   };
   D.HOW_TO_PLAY = [
-    ['FLIGHT', 'WASD / Arrows to pilot the blimp. SPACE fires the Citation Cannon at drones and seagulls. Hover over a glowing bar and press E to rappel. Grab floating evidence folders for cash. Dock at HQ (far left) with E to buy upgrades.'],
-    ['RAPPEL', 'A/D to steer left and right, S to drop faster, W to slow down. Dodge AC units, seagulls and drones. At the bottom, line up with the glowing window and press SPACE to crash through. Fast, clean entries earn bonus inspection time.'],
-    ['INSPECTION', 'Walk up to patrons, staff, or suspicious objects and press E. Check IDs (1), cite violations (2), or back off (3). Every correct citation scores points and builds a combo. Citing the innocent files a complaint: three complaints and Internal Affairs pulls you out.'],
+    ['FLIGHT', '{fly} to pilot the blimp. {fire} fires the Citation Cannon at drones and seagulls. Hover over a glowing bar and press {interact} to rappel. Grab floating evidence folders for cash. Dock at HQ (far left) with {interact} to buy upgrades.'],
+    ['RAPPEL', '{move} to steer left and right, {down} to drop faster, {up} to slow down. Dodge AC units, seagulls and drones. At the bottom, line up with the glowing window and press {action} to crash through. Fast, clean entries earn bonus inspection time.'],
+    ['INSPECTION', 'Walk up to patrons, staff, or suspicious objects and press {interact} ({wall} for the bartender and wall items). Check IDs, cite violations, or back off with {back}. Every correct citation scores points and builds a combo. Citing the innocent files a complaint: three complaints and Internal Affairs pulls you out.'],
     ['EVIDENCE', 'Baby faces need an ID check. Wobbling patrons with a forest of empty glasses are over-served (headphones + music notes are just dancing). Staff sipping from flasks are drinking on duty. If the bartender serves a young patron with no "ID?" bubble, cite them while the alert is up. Watch for people walking out the door with a drink.'],
-    ['SHOWDOWNS', 'Bust enough bars and the district kingpin appears. A/D to move, W to jump, SPACE to throw citations. Dodge whatever they throw at you. Reduce their ego to zero.'],
+    ['SHOWDOWNS', 'Bust enough bars and the district kingpin appears. {move} to move, {jump} to jump, {fire} to throw citations. Dodge whatever they throw at you. Reduce their ego to zero.'],
   ];
   D.CREDITS = ['DABS: Department of Alcoholic Beverage Services', 'A parody. Not affiliated with the State of Utah or anyone depicted.', '', 'Design, code, art, music: procedural pixels and sine waves', 'Blimp consultant: nobody, and it shows', 'No patrons were harmed. Several were cited.', '', 'Thanks for playing. Please order food with that.', '', 'A Game By Sam Garfield'];
 })();

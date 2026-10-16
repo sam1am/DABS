@@ -105,17 +105,17 @@
     }
     buildPanelMenu() {
       const P = this.panel; const items = []; const x = DABS.W - 430, y0 = 372; const bw = 400;
-      if (P.target.kind === 'exit') { items.push(new UI.Button(x, y0, bw, 44, 'LEAVE THE BAR', () => this.leaveEarly(), { key: '1', size: 18, color: '#166534' })); items.push(new UI.Button(x, y0 + 52, bw, 44, 'KEEP INSPECTING', () => this.closePanel(), { key: '2', size: 18, color: '#334155' })); }
-      else if (P.target.kind === 'object') { const o = P.target.o; items.push(new UI.Button(x, y0, bw, 44, `CITE: ${D.VIOLATIONS[o.type].name}`, () => this.cite(P.target, o.type), { key: '1', size: 18, color: '#7f1d1d' })); items.push(new UI.Button(x, y0 + 52, bw, 44, 'BACK OFF', () => this.closePanel(), { key: '2', size: 18, color: '#334155' })); }
+      if (P.target.kind === 'exit') { items.push(new UI.Button(x, y0, bw, 44, 'LEAVE THE BAR', () => this.leaveEarly(), { key: '1', size: 18, color: '#166534' })); items.push(new UI.Button(x, y0 + 52, bw, 44, 'KEEP INSPECTING', () => this.closePanel(), { act: 'back', size: 18, color: '#334155' })); }
+      else if (P.target.kind === 'object') { const o = P.target.o; items.push(new UI.Button(x, y0, bw, 44, `CITE: ${D.VIOLATIONS[o.type].name}`, () => this.cite(P.target, o.type), { key: '1', size: 18, color: '#7f1d1d' })); items.push(new UI.Button(x, y0 + 52, bw, 44, 'BACK OFF', () => this.closePanel(), { act: 'back', size: 18, color: '#334155' })); }
       else if (P.mode === 'main') {
         const p = P.target.p; let k = 1;
         if (!p.isBartender) { const b = new UI.Button(x, y0, bw, 44, p.idKnown ? 'ID ALREADY CHECKED' : `CHECK ID (${this.idTime().toFixed(1)}s)`, () => this.startIdCheck(), { key: String(k++), size: 18, color: '#1f3b8a' }); b.enabled = !p.idKnown; items.push(b); }
         items.push(new UI.Button(x, y0 + (p.isBartender ? 0 : 52), bw, 44, 'CITE ▸', () => { P.mode = 'cite'; this.buildPanelMenu(); A.sfx('click'); }, { key: String(k++), size: 18, color: '#7f1d1d' }));
-        items.push(new UI.Button(x, y0 + (p.isBartender ? 52 : 104), bw, 44, 'BACK OFF', () => this.closePanel(), { key: String(k++), size: 18, color: '#334155' }));
+        items.push(new UI.Button(x, y0 + (p.isBartender ? 52 : 104), bw, 44, 'BACK OFF', () => this.closePanel(), { act: 'back', size: 18, color: '#334155' }));
       } else if (P.mode === 'cite') {
         const p = P.target.p; const list = p.isBartender ? D.BARTENDER_CITES : D.PATRON_CITES.filter(v => v !== 'ON_DUTY' || p.staff); let k = 1;
         list.forEach((v, i) => { items.push(new UI.Button(x, y0 - 60 + i * 40, bw, 34, D.VIOLATIONS[v].short + '  ' + D.VIOLATIONS[v].code, () => this.cite(P.target, v), { key: String(k++), size: 15, color: '#7f1d1d', font: 'body' })); });
-        items.push(new UI.Button(x, y0 - 60 + list.length * 40, bw, 34, 'BACK', () => { P.mode = 'main'; this.buildPanelMenu(); A.sfx('click'); }, { key: String(k++), size: 15, color: '#334155', font: 'body' }));
+        items.push(new UI.Button(x, y0 - 60 + list.length * 40, bw, 34, 'BACK', () => { P.mode = 'main'; this.buildPanelMenu(); A.sfx('click'); }, { act: 'back', size: 15, color: '#334155', font: 'body' }));
       }
       this.panelMenu = new UI.Menu(items);
     }
@@ -159,7 +159,7 @@
       if (this.complaints >= 3) { this.endT = 1.5; this.endReason = 'ia'; this.banner.show('INTERNAL AFFAIRS', 'Three complaints. You are pulled from the bar.', 3, '#f87171'); A.sfx('siren'); }
       else this.game.toasts.add(`Complaint filed (${this.complaints}/3). Internal Affairs is watching.`, '#f87171', 2.5);
     }
-    flee(p, why) { p.state = 'fleeing'; p.pose = 'idle'; p.sit = false; p.mood = 'scared'; p.fx = 'sweat'; p.sway = 0; p.speed = 175 + this.di * 18; const eta = (this.exit.x - 20 - p.x) / p.speed; p.panicT = eta < FLEE_MIN ? (FLEE_MIN - eta) / 2 : 0; p.facing = p.panicT > 0 ? -1 : 1; A.sfx('flee'); this.say(p, U.choice(D.FLEE_LINES)); this.game.toasts.add(`${p.name} is running for the exit! SHIFT to sprint, SPACE to tackle!`, '#fde047', 3); if (this.panel && this.panel.target.p === p) this.closePanel(); }
+    flee(p, why) { p.state = 'fleeing'; p.pose = 'idle'; p.sit = false; p.mood = 'scared'; p.fx = 'sweat'; p.sway = 0; p.speed = 175 + this.di * 18; const eta = (this.exit.x - 20 - p.x) / p.speed; p.panicT = eta < FLEE_MIN ? (FLEE_MIN - eta) / 2 : 0; p.facing = p.panicT > 0 ? -1 : 1; A.sfx('flee'); this.say(p, U.choice(D.FLEE_LINES)); this.game.toasts.add(`${p.name} is running for the exit! ${I.label('sprint')} to sprint, ${I.label('action')} to tackle!`, '#fde047', 3); if (this.panel && this.panel.target.p === p) this.closePanel(); }
     say(p, text, dur) { p.bubble = { text, t: dur || 2.5 }; }
     tackle() {
       const a = this.agent; if (a.tackleT > 0) return; a.tackleT = 0.32; a.pose = 'tackle'; A.sfx('swoosh'); const range = 70 + 28 * S.upgrade('tackle'); a.vx = a.facing * 520;
@@ -196,7 +196,6 @@
       const P = this.panel; P.t += dt; if (P.fresh) { P.fresh = false; return; }
       if (P.mode === 'checking') { P.checkT += dt; if (P.checkT >= this.idTime()) this.finishIdCheck(); return; }
       if (this.panelMenu) this.panelMenu.update(dt);
-      if (I.justPressed('back')) { if (P.mode === 'cite') { P.mode = 'main'; this.buildPanelMenu(); } else this.closePanel(); }
       if (P.target.p && (P.target.p.state === 'gone' || P.target.p.state === 'fleeing')) this.closePanel();
     }
     updatePatrons(dt) {
@@ -303,7 +302,7 @@
       if (b.bubble) G.drawBubble(ctx, b.x, b.y - 124, b.bubble.text, { alpha: Math.min(1, b.bubble.t * 2), fill: '#fef3c7', clampW: W });
       if (b.evidence > 0) { UI.bar(ctx, b.x - 40, b.y - 150, 80, 8, b.evidence / (8 + 2 * S.upgrade('badge')), '#fde047'); G.text(ctx, 'NO ID CHECK!', b.x, b.y - 156, { size: 12, color: '#fde047', align: 'center', shadow: true }); }
       // labels
-      if (tg && !this.panel) { const tx = tg.kind === 'object' ? tg.o.x : tg.kind === 'exit' ? this.exit.x : tg.p.x; const label = tg.kind === 'object' ? `Inspect ${tg.o.name}` : tg.kind === 'exit' ? 'Leave the bar' : tg.kind === 'bartender' ? `Bartender ${tg.p.name}` : tg.p.name; const ly = tg.kind === 'object' ? tg.o.y - 30 : FLOOR - 150; const w = G.measure(ctx, label, { size: 15 }) + 60; G.fillRound(ctx, tx - w / 2, ly - 16, w, 26, 6, 'rgba(0,0,0,0.75)', '#fde047', 1.5); UI.hint(ctx, tx - w / 2 + 8, ly + 3, 'E', label, { size: 15, color: '#fde047' }); if (this.wallHint) G.text(ctx, 'hold W + E: bartender / wall item', tx, ly + 24, { size: 12, color: '#93c5fd', align: 'center', shadow: true }); }
+      if (tg && !this.panel) { const tx = tg.kind === 'object' ? tg.o.x : tg.kind === 'exit' ? this.exit.x : tg.p.x; const label = tg.kind === 'object' ? `Inspect ${tg.o.name}` : tg.kind === 'exit' ? 'Leave the bar' : tg.kind === 'bartender' ? `Bartender ${tg.p.name}` : tg.p.name; const ly = tg.kind === 'object' ? tg.o.y - 30 : FLOOR - 150; const w = UI.hint(ctx, 0, 0, 'interact', label, { size: 15, measure: true }) + 20; G.fillRound(ctx, tx - w / 2, ly - 16, w, 26, 6, 'rgba(0,0,0,0.75)', '#fde047', 1.5); UI.hint(ctx, tx - w / 2 + 8, ly + 3, 'interact', label, { size: 15, color: '#fde047' }); if (this.wallHint) G.text(ctx, `hold ${I.label('wall')}: bartender / wall item`, tx, ly + 24, { size: 12, color: '#93c5fd', align: 'center', shadow: true }); }
       // stamps
       for (const st of this.stamps) { const p = st.t / 1.4; const sc = p < 0.15 ? 2.2 - (p / 0.15) * 1.2 : 1; G.drawStamp(ctx, st.x, st.y - p * 30, st.text, st.color, -0.2, sc * 0.7, p < 0.8 ? 1 : (1 - p) / 0.2); }
       this.parts.draw(ctx);
@@ -335,7 +334,7 @@
       const ex_ = this.agent.exhausted; G.text(ctx, ex_ ? 'WINDED' : 'STAMINA', DABS.W - 300, 62, { size: 13, color: ex_ ? '#f87171' : '#cbd5e1' }); UI.bar(ctx, DABS.W - 220, 51, 190, 12, this.agent.stamina / this.agent.staminaMax, ex_ ? '#ef4444' : '#60a5fa');
       // caught list (small)
       let y = 96; for (const c of this.caught.slice(-6)) { G.text(ctx, '✔ ' + D.VIOLATIONS[c].short, 20, y, { size: 13, color: '#86efac', shadow: true }); y += 18; }
-      if (this.hint > 0) { ctx.save(); ctx.globalAlpha = Math.min(1, this.hint); UI.hintsRow(ctx, 20, DABS.H - 20, [['A/D', 'walk'], ['E', 'inspect'], ['W+E', 'bartender / wall'], ['SHIFT', 'sprint'], ['SPACE', 'tackle'], ['1-6', 'panel choices']], { size: 14 }); ctx.restore(); }
+      if (this.hint > 0) { ctx.save(); ctx.globalAlpha = Math.min(1, this.hint); UI.hintsRow(ctx, 20, DABS.H - 20, [['move', 'walk'], ['interact', 'inspect'], ['wall', 'bartender / wall'], ['sprint', 'sprint'], ['action', 'tackle'], ['back', 'close panel']], { size: 14 }); ctx.restore(); }
     }
     drawPanel(ctx, t) {
       const P = this.panel; const x = DABS.W - 450, y = 90, w = 440, h = 420; UI.panel(ctx, x, y, w, h, { fill: 'rgba(10,12,30,0.95)' });
@@ -358,7 +357,6 @@
         else if (P.mode === 'cite') G.text(ctx, 'Select violation to cite:', x + 20, y + 218, { size: 15, color: '#fca5a5' });
       }
       if (this.panelMenu) this.panelMenu.draw(ctx, t);
-      G.text(ctx, '[Esc] back', x + w - 14, y + h - 12, { size: 12, color: '#64748b', align: 'right' });
     }
   }
   DABS.scenes.bar = BarScene;

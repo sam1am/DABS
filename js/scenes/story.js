@@ -45,7 +45,7 @@
         G.neon(ctx, c.title, 900, 170, { size: 60, color: '#f5c542', glow: 24 });
         UI.drawWrapped(ctx, c.text.slice(0, Math.floor(this.shown)), 660, 240, 500, 32, { size: 23, color: '#f1f5f9', weight: '400' });
         ctx.restore();
-        G.text(ctx, `${this.ci + 1} / ${this.cards.length}   [Space] continue   [Esc] skip`, DABS.W / 2, DABS.H - 40, { size: 15, color: 'rgba(255,255,255,0.6)', align: 'center' });
+        ctx.save(); ctx.globalAlpha = 0.65; const hw = UI.hintsRow(ctx, DABS.W / 2 + 40, DABS.H - 40, [['confirm', 'continue'], ['back', 'skip']], { size: 14, align: 'center' }); G.text(ctx, `${this.ci + 1} / ${this.cards.length}`, DABS.W / 2 + 40 - hw / 2 - 20, DABS.H - 40, { size: 15, color: '#fff', align: 'right' }); ctx.restore();
       } else if (this.dlg) { this.dlg.draw(ctx); }
       UI.drawVignette(ctx, 0.4);
     }

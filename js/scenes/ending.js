@@ -23,7 +23,7 @@
       const scroll = Math.max(0, this.t - 2) * 28; let y = DABS.H + 40 - scroll;
       this.lines.forEach((l, i) => { const big = i === 0 || i === this.creditsAt || i === this.lines.length - 1; if (y > -40 && y < DABS.H + 40) G.text(ctx, l, DABS.W / 2, y, { size: big ? 48 : 22, color: big ? '#fde68a' : '#fff', align: 'center', font: big ? 'title' : 'body', weight: '400', shadow: true, glow: big ? 12 : 0 }); y += big ? 80 : 44; });
       if (y < DABS.H - 100) { G.neon(ctx, 'THE END', DABS.W / 2, DABS.H / 2 - 40, { size: 110, color: '#ff3cac', glow: 40 }); G.text(ctx, `Citations: ${this.stats.citations}   •   Bars busted: ${this.stats.barsBusted}   •   Time on shift: ${U.fmtTime(this.stats.timePlayed)}`, DABS.W / 2, DABS.H / 2 + 50, { size: 18, color: '#fde68a', align: 'center' }); G.text(ctx, 'Free play is unlocked: every district remains open for gold ratings.', DABS.W / 2, DABS.H / 2 + 80, { size: 16, color: '#e5e7eb', align: 'center', weight: '400' }); }
-      if (this.t > 6) G.text(ctx, '[Space] return to title', DABS.W - 20, DABS.H - 16, { size: 13, color: 'rgba(255,255,255,0.6)', align: 'right' });
+      if (this.t > 6) { ctx.save(); ctx.globalAlpha = 0.65; UI.hintsRow(ctx, DABS.W - 20, DABS.H - 16, [['confirm', 'return to title']], { size: 13, align: 'right' }); ctx.restore(); }
     }
   }
   DABS.scenes.ending = EndingScene;

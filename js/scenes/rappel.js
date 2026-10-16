@@ -102,9 +102,9 @@
       G.text(ctx, `Time ${this.timer.toFixed(1)}s   Hits ${a.hits}`, 26, 84, { size: 14, color: a.hits === 0 ? '#86efac' : '#fca5a5' });
       // depth bar
       UI.bar(ctx, DABS.W - 44, 60, 20, 300, 1, '#1f2937', null, null); const frac = U.clamp(a.y / this.len, 0, 1); G.circle(ctx, DABS.W - 34, 60 + 300 * frac, 9, '#fde047', G.OUT, 2); G.fillRound(ctx, DABS.W - 44, 352, 20, 12, 3, '#4ade80', G.OUT, 2); G.text(ctx, 'DEPTH', DABS.W - 34, 50, { size: 11, color: '#94a3b8', align: 'center' });
-      if (this.state === 'align') { const aligned = Math.abs(a.x - this.windowX) < this.hitW / 2; const b = 0.6 + 0.4 * Math.sin(t * 8); G.neon(ctx, aligned ? 'PRESS SPACE TO CRASH THROUGH!' : '← LINE UP WITH THE WINDOW →', DABS.W / 2, 140, { size: 34, color: aligned ? '#4ade80' : '#fde047', glow: 20 * b }); }
+      if (this.state === 'align') { const aligned = Math.abs(a.x - this.windowX) < this.hitW / 2; const b = 0.6 + 0.4 * Math.sin(t * 8); G.neon(ctx, aligned ? `PRESS ${I.label('action')} TO CRASH THROUGH!` : '← LINE UP WITH THE WINDOW →', DABS.W / 2, 140, { size: 34, color: aligned ? '#4ade80' : '#fde047', glow: 20 * b }); }
       if (this.msgT > 0) G.text(ctx, this.msg, DABS.W / 2, 200, { size: 24, color: '#fca5a5', align: 'center', font: 'title', shadow: true, alpha: Math.min(1, this.msgT) });
-      if (this.hint > 0) { ctx.save(); ctx.globalAlpha = Math.min(1, this.hint); UI.hintsRow(ctx, 20, DABS.H - 20, [['A/D', 'steer'], ['S', 'drop faster'], ['W', 'slow down'], ['SPACE', 'crash through window at the bottom']], { size: 14 }); ctx.restore(); }
+      if (this.hint > 0) { ctx.save(); ctx.globalAlpha = Math.min(1, this.hint); UI.hintsRow(ctx, 20, DABS.H - 20, [['move', 'steer'], ['down', 'drop faster'], ['up', 'slow down'], ['action', 'crash through window at the bottom']], { size: 14 }); ctx.restore(); }
     }
   }
   DABS.scenes.rappel = RappelScene;

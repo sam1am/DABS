@@ -16,14 +16,14 @@
     buildContent() {
       const p = S.profile; const items = [];
       if (this.tab === 0) {
-        D.DISTRICTS.forEach((d, i) => { const b = new UI.Button(80, 130 + i * 62, 380, 52, `${i + 1}. ${d.name}`, () => { this.sel = i; this.buildContent(); }, { size: 19, color: i === this.sel ? '#2d4fa8' : '#1a2547', sub: ' ' }); b.enabled = this.game.districtUnlocked(i); items.push(b); });
-        const dep = new UI.Button(500, 560, 330, 60, 'DEPLOY THE SEAGULL', () => this.deploy(), { size: 26, color: '#166534', key: 'E' }); dep.enabled = this.game.districtUnlocked(this.sel); items.push(dep);
-        const rep = new UI.Button(850, 560, 330, 60, 'REPLAY BRIEFING', () => { const d = D.DISTRICTS[this.sel]; this.game.setScene('story', { dialog: D.BRIEFINGS[this.sel], next: { scene: 'hq', params: { select: this.sel } } }); }, { size: 22, color: '#334155' }); rep.enabled = this.game.districtUnlocked(this.sel); items.push(rep);
+        D.DISTRICTS.forEach((d, i) => { const b = new UI.Button(80, 130 + i * 62, 380, 52, `${i + 1}. ${d.name}`, () => { if (!I.mouse.clicked && this.sel === i) this.deploy(); else { this.sel = i; this.buildContent(); } }, { size: 19, color: i === this.sel ? '#2d4fa8' : '#1a2547', sub: ' ' }); b.enabled = this.game.districtUnlocked(i); items.push(b); });
+        const dep = new UI.Button(500, 560, 330, 60, 'DEPLOY THE SEAGULL', () => this.deploy(), { size: 26, color: '#166534', act: 'confirm', nav: false }); dep.enabled = this.game.districtUnlocked(this.sel); items.push(dep);
+        const rep = new UI.Button(850, 560, 330, 60, 'REPLAY BRIEFING', () => { const d = D.DISTRICTS[this.sel]; this.game.setScene('story', { dialog: D.BRIEFINGS[this.sel], next: { scene: 'hq', params: { select: this.sel } } }); }, { size: 22, color: '#334155', act: 'alt', nav: false }); rep.enabled = this.game.districtUnlocked(this.sel); items.push(rep);
       } else if (this.tab === 1) {
         D.UPGRADES.forEach((u, i) => { const col = i % 3, row = Math.floor(i / 3); const lvl = S.upgrade(u.id); const maxed = lvl >= u.costs.length; const cost = maxed ? 0 : u.costs[lvl]; const b = new UI.Button(80 + col * 380, 130 + row * 100, 360, 86, u.name, () => this.buy(u), { size: 20, sub: maxed ? 'MAXED' : `$${cost}`, color: maxed ? '#3f3f46' : (p.money >= cost ? '#1f3b8a' : '#2a2a3a') }); b.upgrade = u; items.push(b); });
       } else if (this.tab === 2) { items.push(new UI.Button(80, 130, 10, 10, '', null, {})); items[0].visible = false; }
       else { items.push(new UI.Button(80, 130, 10, 10, '', null, {})); items[0].visible = false; }
-      this.menu = new UI.Menu(items); if (this.tab === 0) { this.menu.index = this.sel; this.menu.setHot(); }
+      this.menu = new UI.Menu(items, this.tab === 1 ? { cols: 3 } : {}); if (this.tab === 0) { this.menu.index = this.sel; this.menu.setHot(); }
       if (this.tab === 1) { this.menu.index = Math.min(this.upSel, items.length - 1); this.menu.setHot(); }
     }
     deploy() {
@@ -41,12 +41,15 @@
       this.t += dt; this.parts.update(dt);
       let tabClick = false; this.tabButtons.forEach(b => { b.hot = (TABS[this.tab] === b.label); if (b.update(dt)) tabClick = true; });
       const dg = I.digit(); if (dg >= 1 && dg <= 4 && dg - 1 !== this.tab) { this.tab = dg - 1; this.buildContent(); A.sfx('click'); tabClick = true; }
-      if (I.keyPressed('KeyQ') || I.keyPressed('BracketLeft')) { this.tab = (this.tab + 3) % 4; this.buildContent(); A.sfx('click'); }
-      if (I.keyPressed('KeyE') && this.tab !== 0 || I.keyPressed('BracketRight') || I.keyPressed('Tab')) { this.tab = (this.tab + 1) % 4; this.buildContent(); A.sfx('click'); }
-      if (this.tab === 1) { this.upSel = this.menu.index; if (I.justPressed('left')) { this.menu.index = Math.max(0, this.menu.index - 1); this.menu.setHot(); } if (I.justPressed('right')) { this.menu.index = Math.min(this.menu.buttons.length - 1, this.menu.index + 1); this.menu.setHot(); } }
-      if (this.tab === 0 && I.keyPressed('KeyE')) { if (this.game.districtUnlocked(this.sel)) this.deploy(); }
+      if (I.justPressed('tabPrev')) { this.tab = (this.tab + 3) % 4; this.buildContent(); A.sfx('click'); tabClick = true; }
+      else if (I.justPressed('tabNext')) { this.tab = (this.tab + 1) % 4; this.buildContent(); A.sfx('click'); tabClick = true; }
       if (this.tab === 2) { this.awardScroll = U.clamp(this.awardScroll + I.mouse.wheel * 40 + (I.isDown('down') ? 300 * dt : 0) - (I.isDown('up') ? 300 * dt : 0), 0, 420); }
-      if (!tabClick) this.menu.update(dt);
+      if (!tabClick) {
+        this.menu.update(dt);
+        if (this.tab === 1) this.upSel = this.menu.index;
+        // arrowing through the district list selects as you go, so confirm always deploys what's on screen
+        if (this.tab === 0 && this.menu.navMoved && this.menu.index < D.DISTRICTS.length && this.menu.index !== this.sel) { this.sel = this.menu.index; this.buildContent(); }
+      }
       if (I.justPressed('back')) { S.write(); this.game.setScene('title'); }
     }
     draw(ctx) {
@@ -64,7 +67,9 @@
       G.text(ctx, rk.rank.name, DABS.W - 80, 70, { size: 14, color: '#fde68a', align: 'right' });
       if (this.tab === 0) this.drawBriefing(ctx); else if (this.tab === 1) this.drawUpgrades(ctx); else if (this.tab === 2) this.drawAwards(ctx); else this.drawRecords(ctx);
       this.parts.draw(ctx);
-      G.text(ctx, '1-4 / Q / Tab: switch tabs   •   Arrows + Enter: select   •   Esc: title', DABS.W / 2, DABS.H - 14, { size: 13, color: 'rgba(255,255,255,0.45)', align: 'center' });
+      if (I.device !== 'touch') { UI.keycap(ctx, 40, 88, I.label('tabPrev'), { size: 15 }); UI.keycap(ctx, 80 + TABS.length * 200, 88, I.label('tabNext'), { size: 15 }); }
+      const hints = [['tabs', 'switch tabs'], ['nav', 'select']]; if (this.tab === 0) hints.push(['confirm', 'deploy'], ['alt', 'replay briefing']); else if (this.tab === 1) hints.push(['confirm', 'buy']); hints.push(['back', 'title']);
+      ctx.save(); ctx.globalAlpha = 0.55; UI.hintsRow(ctx, DABS.W / 2, DABS.H - 12, hints, { size: 12, align: 'center' }); ctx.restore();
     }
     drawBriefing(ctx) {
       const p = S.profile; this.menu.draw(ctx, this.t);
@@ -87,7 +92,7 @@
     drawUpgrades(ctx) {
       this.menu.draw(ctx, this.t);
       D.UPGRADES.forEach((u, i) => { const col = i % 3, row = Math.floor(i / 3); const x = 80 + col * 380, y = 130 + row * 100; const lvl = S.upgrade(u.id); for (let k = 0; k < u.costs.length; k++) G.fillRound(ctx, x + 14 + k * 22, y + 58, 18, 10, 3, k < lvl ? '#fde68a' : 'rgba(255,255,255,0.15)', G.OUT, 1.5); G.text(ctx, u.cat, x + 346, y + 20, { size: 11, color: '#94a3b8', align: 'right' }); });
-      const b = this.menu.buttons[this.menu.index]; if (b && b.upgrade) { const u = b.upgrade; const lvl = S.upgrade(u.id); UI.panel(ctx, 80, 540, 1120, 90, { stroke: 'rgba(255,255,255,0.3)' }); G.text(ctx, `${u.name} — Level ${lvl}/${u.costs.length}`, 100, 572, { size: 20, color: '#fde68a', font: 'title' }); G.text(ctx, u.desc, 100, 600, { size: 16, color: '#e5e7eb', weight: '400' }); G.text(ctx, lvl < u.costs.length ? `Next level: $${u.costs[lvl]}   [Enter] to purchase` : 'Fully upgraded.', 1180, 600, { size: 15, color: '#86efac', align: 'right' }); }
+      const b = this.menu.buttons[this.menu.index]; if (b && b.upgrade) { const u = b.upgrade; const lvl = S.upgrade(u.id); UI.panel(ctx, 80, 540, 1120, 90, { stroke: 'rgba(255,255,255,0.3)' }); G.text(ctx, `${u.name} — Level ${lvl}/${u.costs.length}`, 100, 572, { size: 20, color: '#fde68a', font: 'title' }); G.text(ctx, u.desc, 100, 600, { size: 16, color: '#e5e7eb', weight: '400' }); if (lvl < u.costs.length) { const hw = UI.hintsRow(ctx, 1180, 600, [['confirm', 'purchase']], { size: 15, color: '#86efac', align: 'right' }); G.text(ctx, `Next level: $${u.costs[lvl]}`, 1180 - hw - 18, 600, { size: 15, color: '#86efac', align: 'right' }); } else G.text(ctx, 'Fully upgraded.', 1180, 600, { size: 15, color: '#86efac', align: 'right' }); }
     }
     drawAwards(ctx) {
       const p = S.profile; const rk = D.rankFor(p.xp);
@@ -96,7 +101,7 @@
       G.text(ctx, `${Object.keys(p.achievements).length} / ${D.ACHIEVEMENTS.length} awards`, 1180, 152, { size: 18, color: '#e5e7eb', align: 'right' });
       ctx.save(); ctx.beginPath(); ctx.rect(80, 210, 1120, 420); ctx.clip(); ctx.translate(0, -this.awardScroll);
       D.ACHIEVEMENTS.forEach((a, i) => { const col = i % 2, row = Math.floor(i / 2); const x = 80 + col * 570, y = 215 + row * 74; const got = !!p.achievements[a.id]; UI.panel(ctx, x, y, 550, 64, { fill: got ? 'rgba(60,50,10,0.85)' : 'rgba(12,16,38,0.85)', stroke: got ? '#f5c542' : 'rgba(255,255,255,0.15)', shadow: false }); G.text(ctx, got ? a.icon : '🔒', x + 32, y + 42, { size: 28, align: 'center', alpha: got ? 1 : 0.4 }); G.text(ctx, a.name, x + 64, y + 28, { size: 18, color: got ? '#fde68a' : '#94a3b8', font: 'title' }); G.text(ctx, a.desc, x + 64, y + 50, { size: 14, color: got ? '#e5e7eb' : '#64748b', weight: '400' }); });
-      ctx.restore(); G.text(ctx, 'Scroll: wheel / arrows', 1180, 640, { size: 12, color: 'rgba(255,255,255,0.4)', align: 'right' });
+      ctx.restore(); G.text(ctx, I.usingPad() ? 'Scroll: ↑ / ↓' : 'Scroll: wheel / arrows', 1180, 640, { size: 12, color: 'rgba(255,255,255,0.4)', align: 'right' });
     }
     drawRecords(ctx) {
       const st = S.profile.stats; const p = S.profile; UI.panel(ctx, 80, 120, 1120, 510, { title: 'CAREER RECORDS' });
