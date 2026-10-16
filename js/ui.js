@@ -20,9 +20,9 @@
     if (frac > 0) { ctx.save(); G.roundRect(ctx, x, y, w, h, h / 2); ctx.clip(); const g = ctx.createLinearGradient(x, y, x, y + h); g.addColorStop(0, U.shade(color, 0.25)); g.addColorStop(1, U.shade(color, -0.2)); ctx.fillStyle = g; ctx.fillRect(x, y, w * frac, h); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, w * frac, h * 0.4); ctx.restore(); }
     if (label) G.text(ctx, label, x + w / 2, y + h / 2 + 1, { size: o.size || Math.max(11, h - 6), color: '#fff', align: 'center', baseline: 'middle', shadow: true });
   };
-  // keycap: light key on keyboard; on a gamepad, coloured face buttons (A/B/X/Y, ✕○□△) or a dark pill (LB, START, ...)
+  // keycap: light key on keyboard; on a gamepad, coloured face buttons (A/B/X/Y, ✕○□△) or a dark pill (LB, START, touch labels)
   UI.keycap = function (ctx, x, y, key, o) {
-    o = o || {}; const size = o.size || 14; const pad = I.usingPad(); const face = I.faceColor(key); const h = size * 1.6;
+    o = o || {}; const size = o.size || 14; const pad = I.device !== 'kb'; const face = I.faceColor(key); const h = size * 1.6;
     ctx.save(); ctx.font = `900 ${size}px ${G.BODY_FONT}`; const w = face ? h : Math.max(size * 1.7, ctx.measureText(key).width + (pad ? 16 : 12));
     if (!o.measure) {
       if (face) G.circle(ctx, x + w / 2, y - size * 0.15, h / 2, face, G.OUT, 2); else G.fillRound(ctx, x, y - size * 0.95, w, h, pad ? h / 2 : 5, pad ? '#1f2937' : (o.fill || '#e5e7eb'), pad ? '#9ca3af' : G.OUT, 2);
@@ -33,8 +33,9 @@
   // hint: keycap for an action (resolved per device via I.label) followed by a label; returns its width
   UI.hint = function (ctx, x, y, act, label, o) { o = o || {}; const size = o.size || 15; const w = UI.keycap(ctx, x, y, I.label(act), o); if (!o.measure) G.text(ctx, label, x + w + 8, y, { size, color: o.color || '#e5e7eb', shadow: true }); return w + 8 + G.measure(ctx, label, { size }); };
   // hintsRow: [[action, label], ...]; o.align 'left' (default) | 'center' | 'right' anchors the row at x; returns the row width
+  // on touch the controls carry their own labels, so control-help rows are skipped
   UI.hintsRow = function (ctx, x, y, hints, o) {
-    o = o || {}; const gap = 18; let w = 0; for (const h of hints) w += UI.hint(ctx, 0, y, h[0], h[1], Object.assign({}, o, { measure: true })) + gap; w = Math.max(0, w - gap);
+    o = o || {}; if (I.device === 'touch') return 0; const gap = 18; let w = 0; for (const h of hints) w += UI.hint(ctx, 0, y, h[0], h[1], Object.assign({}, o, { measure: true })) + gap; w = Math.max(0, w - gap);
     let cx = o.align === 'center' ? x - w / 2 : o.align === 'right' ? x - w : x; if (!o.measure) for (const h of hints) cx += UI.hint(ctx, cx, y, h[0], h[1], o) + gap; return w;
   };
 
@@ -49,8 +50,8 @@
       if (hot && en) { ctx.shadowColor = this.o.glow || '#f5c542'; ctx.shadowBlur = 18; }
       G.roundRect(ctx, 0, 0, this.w, this.h, this.o.radius || 10); ctx.fillStyle = en ? g : '#3a3f4f'; ctx.fill(); ctx.shadowBlur = 0; ctx.lineWidth = 2.5; ctx.strokeStyle = en ? (hot ? '#ffe28a' : (this.o.stroke || '#f5c542')) : '#555b6e'; ctx.stroke();
       const sz = this.o.size || Math.min(26, this.h * 0.5); let tx = this.w / 2; let align = 'center';
-      // o.act: an action whose button is shown on any device (e.g. 'back'); o.key: a keyboard-only shortcut, hidden on gamepad
-      const cap = this.o.act ? I.label(this.o.act) : (this.o.key && !I.usingPad()) ? this.o.key : null;
+      // o.act: an action whose button is shown on keyboard / gamepad (e.g. 'back'); o.key: a keyboard-only shortcut. Touch just taps the button.
+      const dev = I.device; const cap = this.o.act && dev !== 'touch' ? I.label(this.o.act) : (this.o.key && dev === 'kb') ? this.o.key : null;
       if (cap) { const kw = UI.keycap(ctx, 12, this.h / 2 + sz * 0.3, cap, { size: sz * 0.7 }); tx = 12 + kw + 12; align = 'left'; }
       G.text(ctx, this.label, tx, this.h / 2 + sz * 0.36, { size: sz, color: en ? (this.o.textColor || '#fff') : '#8a8fa3', align, font: this.o.font || 'title', shadow: true, maxWidth: this.w - tx - (this.o.sub ? 90 : 14) - (align === 'center' ? (this.w / 2 - tx) : 0) });
       if (this.o.sub) G.text(ctx, this.o.sub, this.w - 12, this.h / 2 + 6, { size: 14, color: '#fde68a', align: 'right' });

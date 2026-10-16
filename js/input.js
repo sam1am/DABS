@@ -1,10 +1,10 @@
-// DABS - input handling: keyboard, mouse/touch and gamepads, all funnelled into named actions
+// DABS - input handling: keyboard, mouse and gamepads (touch lives in touch.js), all funnelled into named actions
 (function () {
   const I = DABS.input = {
     down: {}, pressed: {}, released: {}, anyPressed: false,
-    device: 'kb', padStyle: 'xbox', // last-used device; on-screen hints follow it
+    device: 'kb', padStyle: 'xbox', // last-used device ('kb' | 'pad' | 'touch'); on-screen hints follow it
     mouse: { x: 0, y: 0, down: false, clicked: false, released: false, moved: false, wheel: 0, inCanvas: false },
-    // Pad* / Stick* codes are synthesized from the Gamepad API (standard mapping) in pollPads()
+    // Pad* / Stick* codes are synthesized from the Gamepad API (standard mapping) in pollPads(); T:<action> codes come from touch.js
     map: {
       left: ['ArrowLeft', 'KeyA', 'PadLeft', 'StickLeft'], right: ['ArrowRight', 'KeyD', 'PadRight', 'StickRight'], up: ['ArrowUp', 'KeyW', 'PadUp', 'StickUp'], down: ['ArrowDown', 'KeyS', 'PadDown', 'StickDown'],
       action: ['Space', 'PadX'], interact: ['KeyE', 'Enter', 'PadA'], confirm: ['Enter', 'Space', 'PadA'], sprint: ['ShiftLeft', 'ShiftRight', 'PadRT', 'PadLT'],
@@ -13,6 +13,7 @@
     },
     canvas: null,
   };
+  for (const a in I.map) I.map[a].push('T:' + a);
   const PREVENT = new Set(['Space', 'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab']);
   I.setDevice = function (d) { if (I.device === d) return; I.device = d; if (I.canvas) I.canvas.style.cursor = d === 'pad' ? 'none' : ''; };
   I.init = function (canvas) {
@@ -36,9 +37,6 @@
     window.addEventListener('mouseup', (e) => { toCanvas(e); I.mouse.down = false; I.mouse.released = true; });
     canvas.addEventListener('wheel', (e) => { I.mouse.wheel += Math.sign(e.deltaY); e.preventDefault(); }, { passive: false });
     canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    canvas.addEventListener('touchstart', (e) => { const t = e.touches[0]; toCanvas(t); I.mouse.down = true; I.mouse.clicked = true; I.anyPressed = true; I.setDevice('kb'); if (DABS.audio) DABS.audio.init(); e.preventDefault(); }, { passive: false });
-    canvas.addEventListener('touchmove', (e) => { const t = e.touches[0]; toCanvas(t); e.preventDefault(); }, { passive: false });
-    canvas.addEventListener('touchend', (e) => { I.mouse.down = false; I.mouse.released = true; e.preventDefault(); }, { passive: false });
   };
   // ---------- Gamepads (polled once per frame) ----------
   const PAD_BUTTONS = { 0: 'PadA', 1: 'PadB', 2: 'PadX', 3: 'PadY', 4: 'PadLB', 5: 'PadRB', 6: 'PadLT', 7: 'PadRT', 8: 'PadSelect', 9: 'PadStart', 12: 'PadUp', 13: 'PadDown', 14: 'PadLeft', 15: 'PadRight' };
@@ -67,7 +65,7 @@
   };
   const FACE = { A: '#16a34a', B: '#dc2626', X: '#2563eb', Y: '#ca8a04', '✕': '#3b82f6', '○': '#ef4444', '□': '#ec4899', '△': '#22c55e' };
   I.usingPad = () => I.device === 'pad';
-  I.label = (act) => { const t = I.usingPad() ? LABELS[I.padStyle] : LABELS.kb; return t[act] || act; };
+  I.label = (act) => { if (I.device === 'touch') return (DABS.touch && DABS.touch.label(act)) || act; const t = I.usingPad() ? LABELS[I.padStyle] : LABELS.kb; return t[act] || act; };
   I.faceColor = (label) => I.usingPad() ? FACE[label] || null : null;
   // replace {action} tokens in prose with the current device's button label
   I.fmt = (s) => String(s).replace(/\{(\w+)\}/g, (m, a) => LABELS.kb[a] ? I.label(a) : m);

@@ -67,7 +67,7 @@
       G.text(ctx, rk.rank.name, DABS.W - 80, 70, { size: 14, color: '#fde68a', align: 'right' });
       if (this.tab === 0) this.drawBriefing(ctx); else if (this.tab === 1) this.drawUpgrades(ctx); else if (this.tab === 2) this.drawAwards(ctx); else this.drawRecords(ctx);
       this.parts.draw(ctx);
-      UI.keycap(ctx, 40, 88, I.label('tabPrev'), { size: 15 }); UI.keycap(ctx, 80 + TABS.length * 200, 88, I.label('tabNext'), { size: 15 });
+      if (I.device !== 'touch') { UI.keycap(ctx, 40, 88, I.label('tabPrev'), { size: 15 }); UI.keycap(ctx, 80 + TABS.length * 200, 88, I.label('tabNext'), { size: 15 }); }
       const hints = [['tabs', 'switch tabs'], ['nav', 'select']]; if (this.tab === 0) hints.push(['confirm', 'deploy'], ['alt', 'replay briefing']); else if (this.tab === 1) hints.push(['confirm', 'buy']); hints.push(['back', 'title']);
       ctx.save(); ctx.globalAlpha = 0.55; UI.hintsRow(ctx, DABS.W / 2, DABS.H - 12, hints, { size: 12, align: 'center' }); ctx.restore();
     }

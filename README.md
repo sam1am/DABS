@@ -49,6 +49,8 @@ Keyboard and gamepad (Xbox / PlayStation layouts, any controller the browser exp
 | Dialogue | **Enter / Space** next, **Esc** skip | **A** next, **B** skip |
 | Anywhere | **Esc** pause (and back out of any menu or panel), M mute | **Start** pause, **B** back, **View** mute |
 
+On phones and tablets (landscape), a floating stick appears wherever you put your left thumb, and the right side shows that scene's buttons: **FIRE / USE** in flight, **GO** to crash through on the rappel, **USE / TACKLE** in bars (push the stick to its rim to sprint; hold it up while tapping USE for the bartender or wall items), and **THROW / JUMP** in showdowns, plus **❚❚** to pause. Menus, panels and dialogue are tapped directly. Fullscreen (from the pause menu) gives the most room.
+
 ## Structure
 
 - Six districts (State Street, Silicon Slopes, Park City, the Great Salt Lake, the Uintah Basin, Happy Valley), 40 bars (optional bars pay extra), six kingpin showdowns, a final airship battle and an ending.

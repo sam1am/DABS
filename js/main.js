@@ -9,7 +9,7 @@
     window.addEventListener('error', (e) => { errDiv.style.display = 'block'; errDiv.textContent += (e.message || e) + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno + '\n'; });
     const resize = () => { const s = Math.min(window.innerWidth / DABS.W, window.innerHeight / DABS.H); canvas.style.width = Math.floor(DABS.W * s) + 'px'; canvas.style.height = Math.floor(DABS.H * s) + 'px'; };
     window.addEventListener('resize', resize); resize();
-    I.init(canvas); S.load(); A.muted = !!S.profile.muted;
+    I.init(canvas); DABS.touch.init(canvas); S.load(); A.muted = !!S.profile.muted;
     if (document.fonts && document.fonts.load) { document.fonts.load("normal 40px 'Bangers'"); document.fonts.load("700 20px 'Nunito'"); }
     const params = new URLSearchParams(location.search); const start = params.get('scene') || 'title';
     const sp = {}; params.forEach((v, k) => { sp[k] = isNaN(v) ? v : Number(v); });
@@ -33,7 +33,7 @@
     game.fade.dir = 1; game.fade.cb = () => { game.createScene(name, params); game.fade.dir = -1; };
   };
   game.frame = function (dt) {
-    game.t += dt; const sc = game.scene; I.pollPads();
+    game.t += dt; const sc = game.scene; I.pollPads(); DABS.touch.update(game);
     // pause
     let toggled = false; if (sc && sc.pausable && I.justPressed('pause') && !game.fade.cb) { game.togglePause(); toggled = true; }
     if (I.justPressed('mute')) { const m = A.toggleMute(); S.profile.muted = m; S.write(); game.toasts.add(`${m ? 'Sound muted' : 'Sound on'} (${I.label('mute')})`, '#a5b4fc', 1.5); }
@@ -46,10 +46,12 @@
     const ctx = game.ctx; ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.clearRect(0, 0, DABS.W, DABS.H);
     if (game.scene) game.scene.draw(ctx, game.t);
     ctx.restore(); ctx.setTransform(1, 0, 0, 1, 0, 0);
+    DABS.touch.draw(ctx);
     if (game.paused) game.drawPause(ctx);
     game.toasts.draw(ctx, DABS.W / 2, DABS.H - 130);
     if (A.muted) G.text(ctx, '🔇', DABS.W - 16, 30, { size: 20, align: 'right', alpha: 0.6 });
     if (f.a > 0) { ctx.fillStyle = `rgba(0,0,0,${f.a})`; ctx.fillRect(0, 0, DABS.W, DABS.H); }
+    DABS.touch.drawRotate(ctx);
     I.endFrame();
   };
   // ---------- Pause ----------

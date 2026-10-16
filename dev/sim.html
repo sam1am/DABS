@@ -9,7 +9,7 @@
 <script>window.addEventListener("error",function(e){var d=document.getElementById("log");d.textContent+="EARLY ERROR "+e.message+" @ "+String(e.filename).split("/").pop()+":"+e.lineno+"\n";try{var x=new XMLHttpRequest();x.open("GET","/SIMLOG/"+encodeURIComponent("EARLY ERROR "+e.message+" "+String(e.filename).split("/").pop()+":"+e.lineno),false);x.send();}catch(_){}});</script>
 <script src="../js/util.js"></script>
 <script>DABS.NO_AUTOLOOP = true;</script>
-<script src="../js/input.js"></script><script src="../js/save.js"></script><script src="../js/audio.js"></script><script src="../js/gfx.js"></script><script src="../js/ui.js"></script><script src="../js/data.js"></script>
+<script src="../js/input.js"></script><script src="../js/save.js"></script><script src="../js/audio.js"></script><script src="../js/gfx.js"></script><script src="../js/ui.js"></script><script src="../js/touch.js"></script><script src="../js/data.js"></script>
 <script src="../js/scenes/title.js"></script><script src="../js/scenes/story.js"></script><script src="../js/scenes/hq.js"></script><script src="../js/scenes/city.js"></script><script src="../js/scenes/rappel.js"></script><script src="../js/scenes/bar.js"></script><script src="../js/scenes/boss.js"></script><script src="../js/scenes/results.js"></script><script src="../js/scenes/ending.js"></script>
 <script src="../js/main.js"></script>
 <script>
@@ -101,6 +101,17 @@ try {
   const pp = pb.patrons.find(p => p.state === 'idle'); pb.openPanel({ kind: 'patron', p: pp }); step(2); if (pb.panel) { pb.panel.mode = 'cite'; pb.buildPanelMenu(); step(1); tap(1); log('pad B from cite -> mode=' + (pb.panel && pb.panel.mode)); tap(1); log('pad B again -> panel=' + !!pb.panel); }
   I.setDevice('kb'); log('kb label(back)=' + I.label('back') + ' fmt=' + I.fmt('{fire} / {interact}'));
   window.navigator.getGamepads = () => [];
+  // touch: drive the virtual stick and buttons through the same paths the touch listeners use
+  const TS = DABS.touch._sim; const ttap = (id, x, y) => { TS.start(id, { x, y }); step(1); TS.finish(id); step(1); };
+  I.setDevice('touch'); goto('city', { district: 0 }); step(3); const tc = scene(); log('touch city layout=' + DABS.touch.sig + ' label(fire)=' + I.label('fire'));
+  const x0 = tc.blimp.x; TS.start(1, { x: 200, y: 560 }); TS.move(1, { x: 300, y: 560 }); step(30); log('touch stick right dx=' + Math.round(tc.blimp.x - x0) + ' right=' + I.isDown('right')); TS.finish(1); step(1); log('stick released right=' + I.isDown('right'));
+  tc.blimp.fireCd = 0; const ns = tc.shots.length; TS.start(2, { x: 1168, y: 596 }); step(1); log('touch FIRE shots ' + ns + ' -> ' + tc.shots.length); TS.finish(2); step(1);
+  ttap(3, 1236, 124); log('touch pause paused=' + game.paused + ' layout=' + DABS.touch.sig); const rb = game.pauseMenu.buttons[0]; ttap(4, rb.x + 20, rb.y + 20); log('tap RESUME paused=' + game.paused);
+  goto('bar', { district: 0, bar: 0, entry: 'good' }); const tb = scene(); step(400); tb.agent.x = tb.exit.x; step(2); ttap(5, 1168, 596); step(1); log('touch USE panel=' + !!tb.panel + ' layout=' + DABS.touch.sig + ' label(action)=' + I.label('action'));
+  if (tb.panel) { const bo = tb.panelMenu.buttons.find(b => b.o.act === 'back'); ttap(6, bo.x + 20, bo.y + 20); log('tap KEEP INSPECTING panel=' + !!tb.panel); }
+  goto('boss', { district: 0, entry: 'good' }); const tbs = scene(); tbs.boss.state = 'fight'; step(2); ttap(7, 1030, 642); log('touch JUMP vy=' + Math.round(tbs.agent.vy) + ' onGround=' + tbs.agent.onGround + ' layout=' + DABS.touch.sig);
+  goto('hq', {}); step(3); ttap(8, 44, 40); step(60); log('touch hq BACK -> ' + game.sceneName);
+  I.setDevice('kb');
   log('achievements=' + Object.keys(S.profile.achievements).join(','));
   log('SIM DONE errors=' + LOG.filter(l => l.startsWith('ERROR') || l.startsWith('FRAME ERROR')).length);
 } catch (e) { log('SIM EXCEPTION: ' + e.message + ' :: ' + (e.stack || e)); }
