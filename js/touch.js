@@ -17,6 +17,7 @@
       case 'boss': { const s = sc.boss && sc.boss.state; if (s === 'fight') return { stick: true, buttons: [btn('fire', 'THROW', 1168, 596, 64), btn('jump', 'JUMP', 1030, 642, 54), PAUSE(1236, 104)] }; if (s === 'intro') return { buttons: [btn('back', 'SKIP', 1210, 44, 32)] }; return null; }
       case 'story': return { buttons: [btn('back', 'SKIP', 1210, 44, 32)] };
       case 'hq': return { buttons: [btn('back', 'BACK', 44, 40, 30)] };
+      case 'title': return sc.mode === 'menu' && game.canFullscreen() && !game.isFullscreen() ? { buttons: [btn('fullscreen', '⛶', 1230, 50, 32)] } : null;
       default: return null;
     }
   };
@@ -46,30 +47,34 @@
       if (b) { T.touches[id] = { kind: 'btn', act: b.act }; press('T:' + b.act); return; }
       if (L.stick && !T.stick && p.x < DABS.W * 0.5 && p.y > 140) { T.stick = { id, ox: p.x, oy: p.y, x: p.x, y: p.y }; T.touches[id] = { kind: 'stick' }; setStick(T.stick); return; }
     }
-    T.touches[id] = { kind: 'mouse' }; const m = I.mouse; m.x = p.x; m.y = p.y; m.inCanvas = true; m.down = true; m.clicked = true; m.moved = true; I.anyPressed = true;
+    // taps click on release, like a mouse button: touchend is what browsers accept as a gesture for fullscreen, and a drag off a button cancels it
+    T.touches[id] = { kind: 'mouse' }; const m = I.mouse; m.x = p.x; m.y = p.y; m.inCanvas = true; m.down = true; m.moved = true;
   }
   function move(id, p) {
     const t = T.touches[id]; if (!t) return;
     if (t.kind === 'stick' && T.stick) { T.stick.x = p.x; T.stick.y = p.y; setStick(T.stick); }
     else if (t.kind === 'mouse') { I.mouse.x = p.x; I.mouse.y = p.y; I.mouse.moved = true; }
   }
-  function finish(id) {
+  function finish(id, p) {
     const t = T.touches[id]; if (!t) return; delete T.touches[id];
-    if (t.kind === 'btn') release('T:' + t.act);
+    if (t.kind === 'btn') { release('T:' + t.act); if (t.act === 'fullscreen') DABS.game.fullscreen(true); }
     else if (t.kind === 'stick') { T.stick = null; setStick(null); }
-    else if (t.kind === 'mouse') { I.mouse.down = false; I.mouse.released = true; }
+    else if (t.kind === 'mouse') { const m = I.mouse; if (p) { m.x = p.x; m.y = p.y; } m.down = false; m.released = true; m.clicked = true; I.anyPressed = true; }
   }
-  T._sim = { start, move, finish }; // lets dev/sim.html fake touches
+  T._sim = { start, move, finish, firstTap: () => firstTapFullscreen() }; // lets dev/sim.html fake touches
   // phones and tablets report a coarse primary pointer: start in touch mode so the first screen already shows touch hints
   // (touchscreen laptops report a fine pointer and keep keyboard hints until touched)
-  T.detect = function () { if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) I.setDevice('touch'); };
+  T.detect = function () { T.coarse = typeof window !== 'undefined' && !!window.matchMedia && window.matchMedia('(pointer: coarse)').matches; if (T.coarse) I.setDevice('touch'); };
+  // phones and tablets go fullscreen on the first tap (unless launched from the home screen); after that it's the title ⛶ button or the pause menu
+  let autoFullscreen = true;
+  function firstTapFullscreen() { if (!autoFullscreen || !T.coarse) return; autoFullscreen = false; const g = DABS.game; if (g.canFullscreen() && !g.isFullscreen() && !g.installed()) g.fullscreen(true); }
   T.init = function (canvas) {
     T.detect();
     const pos = (t) => { const r = canvas.getBoundingClientRect(); return { x: (t.clientX - r.left) * DABS.W / r.width, y: (t.clientY - r.top) * DABS.H / r.height }; };
     const opts = { passive: false }; // whole window, so the letterbox bars work too; preventDefault stops scrolling, zoom and emulated mouse events
     window.addEventListener('touchstart', (e) => { e.preventDefault(); I.setDevice('touch'); if (DABS.audio) DABS.audio.init(); for (const t of e.changedTouches) start(t.identifier, pos(t)); }, opts);
     window.addEventListener('touchmove', (e) => { e.preventDefault(); for (const t of e.changedTouches) move(t.identifier, pos(t)); }, opts);
-    const end = (e) => { e.preventDefault(); if (DABS.audio) DABS.audio.init(); for (const t of e.changedTouches) finish(t.identifier); }; // iOS only unlocks audio on touchend
+    const end = (e) => { e.preventDefault(); if (DABS.audio) DABS.audio.init(); for (const t of e.changedTouches) finish(t.identifier, pos(t)); if (e.type === 'touchend') firstTapFullscreen(); }; // iOS only unlocks audio on touchend
     window.addEventListener('touchend', end, opts); window.addEventListener('touchcancel', end, opts);
   };
   // once per frame, before the scene updates

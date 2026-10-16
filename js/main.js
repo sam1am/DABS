@@ -7,8 +7,15 @@
     const canvas = game.canvas = document.getElementById('game'); game.ctx = canvas.getContext('2d');
     const errDiv = document.getElementById('err');
     window.addEventListener('error', (e) => { errDiv.style.display = 'block'; errDiv.textContent += (e.message || e) + ' @ ' + (e.filename || '').split('/').pop() + ':' + e.lineno + '\n'; });
-    const resize = () => { const s = Math.min(window.innerWidth / DABS.W, window.innerHeight / DABS.H); canvas.style.width = Math.floor(DABS.W * s) + 'px'; canvas.style.height = Math.floor(DABS.H * s) + 'px'; };
-    window.addEventListener('resize', resize); resize();
+    // fit inside #wrap's content box, which is padded by the safe-area insets (notches, home indicator)
+    const wrap = document.getElementById('wrap');
+    const resize = () => {
+      let w = window.innerWidth, h = window.innerHeight;
+      if (wrap && wrap.clientWidth > 0 && window.getComputedStyle) { const cs = window.getComputedStyle(wrap); w = wrap.clientWidth - parseFloat(cs.paddingLeft) - parseFloat(cs.paddingRight); h = wrap.clientHeight - parseFloat(cs.paddingTop) - parseFloat(cs.paddingBottom); }
+      const s = Math.min(w / DABS.W, h / DABS.H); canvas.style.width = Math.floor(DABS.W * s) + 'px'; canvas.style.height = Math.floor(DABS.H * s) + 'px';
+    };
+    window.addEventListener('resize', resize); window.addEventListener('orientationchange', () => setTimeout(resize, 250));
+    document.addEventListener('fullscreenchange', resize); document.addEventListener('webkitfullscreenchange', resize); resize();
     I.init(canvas); DABS.touch.init(canvas); S.load(); A.muted = !!S.profile.muted;
     if (document.fonts && document.fonts.load) { document.fonts.load("normal 40px 'Bangers'"); document.fonts.load("700 20px 'Nunito'"); }
     const params = new URLSearchParams(location.search); const start = params.get('scene') || 'title';
@@ -63,13 +70,28 @@
       items.push(new UI.Button(bx, by, 320, 54, 'RESUME', () => { game.paused = false; }, { act: 'back' }));
       if (game.sceneName !== 'hq') items.push(new UI.Button(bx, by + 66, 320, 54, 'RETURN TO HQ', () => { game.paused = false; game.abortToHQ(); }, { key: String(k++) }));
       items.push(new UI.Button(bx, by + 132, 320, 54, A.muted ? 'SOUND: OFF' : 'SOUND: ON', (b) => { const m = A.toggleMute(); S.profile.muted = m; S.write(); b.label = m ? 'SOUND: OFF' : 'SOUND: ON'; }, { key: String(k++) }));
-      items.push(new UI.Button(bx, by + 198, 320, 54, 'FULLSCREEN', () => { game.fullscreen(); }, { key: String(k++) }));
+      const fs = new UI.Button(bx, by + 198, 320, 54, game.isFullscreen() ? 'EXIT FULLSCREEN' : 'FULLSCREEN', () => { game.fullscreen(); }, { key: String(k++) }); fs.enabled = game.canFullscreen(); items.push(fs);
       items.push(new UI.Button(bx, by + 264, 320, 54, 'QUIT TO TITLE', () => { game.paused = false; S.write(); game.setScene('title'); }, { key: String(k++), color: '#7f1d1d' }));
       game.pauseMenu = new UI.Menu(items);
     }
   };
   game.abortToHQ = function () { S.write(); game.setScene('hq'); };
-  game.fullscreen = function () { const el = document.documentElement; if (!document.fullscreenElement) { if (el.requestFullscreen) el.requestFullscreen(); } else if (document.exitFullscreen) document.exitFullscreen(); };
+  // ---------- Fullscreen ----------
+  // Browsers only allow entering from a user gesture (key press, click, touchend). iPhone Safari has no element
+  // fullscreen at all; there the way in is Add to Home Screen, which launches via manifest.webmanifest.
+  const fsElement = () => document.fullscreenElement || document.webkitFullscreenElement;
+  game.canFullscreen = () => !!(document.fullscreenEnabled || document.webkitFullscreenEnabled);
+  game.isFullscreen = () => !!fsElement();
+  game.installed = () => !!(window.navigator && window.navigator.standalone) || !!(window.matchMedia && window.matchMedia('(display-mode: fullscreen), (display-mode: standalone)').matches);
+  game.fullscreen = function (on) {
+    if (on === undefined) on = !fsElement();
+    const el = document.documentElement;
+    if (on && !fsElement()) {
+      const req = el.requestFullscreen || el.webkitRequestFullscreen; if (!req) return;
+      const lock = () => { if (screen.orientation && screen.orientation.lock) screen.orientation.lock('landscape').catch(() => {}); };
+      const p = req.call(el, { navigationUI: 'hide' }); if (p && p.then) p.then(lock, () => {}); else lock();
+    } else if (!on && fsElement()) { const ex = document.exitFullscreen || document.webkitExitFullscreen; if (ex) ex.call(document); }
+  };
   game.updatePause = function (dt) { game.pauseMenu.update(dt); };
   game.drawPause = function (ctx) {
     ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0, 0, DABS.W, DABS.H);

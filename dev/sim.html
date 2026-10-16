@@ -114,6 +114,13 @@ try {
   I.setDevice('kb'); window.matchMedia = (q) => ({ matches: false }); DABS.touch.detect(); log('fine pointer device=' + I.device);
   window.matchMedia = (q) => ({ matches: q === '(pointer: coarse)' }); DABS.touch.detect(); log('coarse pointer device=' + I.device);
   goto('title', {}); step(5); log('title on coarse: hintsRow=' + DABS.ui.hintsRow(game.ctx, 0, 0, [['confirm', 'x']]) + ' label(confirm)=' + I.label('confirm'));
+  // fullscreen: fake the API, then the title ⛶ button, the pause-menu toggle and the first-tap auto fullscreen
+  const de = document.documentElement; Object.defineProperty(document, 'fullscreenEnabled', { value: true, configurable: true }); Object.defineProperty(document, 'fullscreenElement', { value: null, writable: true, configurable: true });
+  de.requestFullscreen = function () { document.fullscreenElement = de; return Promise.resolve(); }; document.exitFullscreen = function () { document.fullscreenElement = null; return Promise.resolve(); };
+  step(2); log('title fs layout=' + DABS.touch.sig); ttap(9, 1230, 50); log('tap ⛶ fullscreen=' + game.isFullscreen() + ' layout=' + DABS.touch.sig);
+  goto('city', { district: 0 }); step(2); game.togglePause(); log('pause fs button=' + game.pauseMenu.buttons[3].label + ' enabled=' + game.pauseMenu.buttons[3].enabled); game.pauseMenu.buttons[3].press(); log('after toggle fullscreen=' + game.isFullscreen()); game.paused = false;
+  DABS.touch._sim.firstTap(); log('first tap auto fullscreen=' + game.isFullscreen()); document.exitFullscreen(); DABS.touch._sim.firstTap(); log('second tap stays windowed=' + !game.isFullscreen());
+  Object.defineProperty(document, 'fullscreenEnabled', { value: false, configurable: true }); goto('title', {}); step(3); log('no-API title layout=' + DABS.touch.sig + ' installed=' + game.installed());
   delete window.matchMedia; I.setDevice('kb');
   log('achievements=' + Object.keys(S.profile.achievements).join(','));
   log('SIM DONE errors=' + LOG.filter(l => l.startsWith('ERROR') || l.startsWith('FRAME ERROR')).length);
