@@ -111,7 +111,10 @@ try {
   if (tb.panel) { const bo = tb.panelMenu.buttons.find(b => b.o.act === 'back'); ttap(6, bo.x + 20, bo.y + 20); log('tap KEEP INSPECTING panel=' + !!tb.panel); }
   goto('boss', { district: 0, entry: 'good' }); const tbs = scene(); tbs.boss.state = 'fight'; step(2); ttap(7, 1030, 642); log('touch JUMP vy=' + Math.round(tbs.agent.vy) + ' onGround=' + tbs.agent.onGround + ' layout=' + DABS.touch.sig);
   goto('hq', {}); step(3); ttap(8, 44, 40); step(60); log('touch hq BACK -> ' + game.sceneName);
-  I.setDevice('kb');
+  I.setDevice('kb'); window.matchMedia = (q) => ({ matches: false }); DABS.touch.detect(); log('fine pointer device=' + I.device);
+  window.matchMedia = (q) => ({ matches: q === '(pointer: coarse)' }); DABS.touch.detect(); log('coarse pointer device=' + I.device);
+  goto('title', {}); step(5); log('title on coarse: hintsRow=' + DABS.ui.hintsRow(game.ctx, 0, 0, [['confirm', 'x']]) + ' label(confirm)=' + I.label('confirm'));
+  delete window.matchMedia; I.setDevice('kb');
   log('achievements=' + Object.keys(S.profile.achievements).join(','));
   log('SIM DONE errors=' + LOG.filter(l => l.startsWith('ERROR') || l.startsWith('FRAME ERROR')).length);
 } catch (e) { log('SIM EXCEPTION: ' + e.message + ' :: ' + (e.stack || e)); }

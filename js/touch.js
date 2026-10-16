@@ -60,7 +60,11 @@
     else if (t.kind === 'mouse') { I.mouse.down = false; I.mouse.released = true; }
   }
   T._sim = { start, move, finish }; // lets dev/sim.html fake touches
+  // phones and tablets report a coarse primary pointer: start in touch mode so the first screen already shows touch hints
+  // (touchscreen laptops report a fine pointer and keep keyboard hints until touched)
+  T.detect = function () { if (typeof window !== 'undefined' && window.matchMedia && window.matchMedia('(pointer: coarse)').matches) I.setDevice('touch'); };
   T.init = function (canvas) {
+    T.detect();
     const pos = (t) => { const r = canvas.getBoundingClientRect(); return { x: (t.clientX - r.left) * DABS.W / r.width, y: (t.clientY - r.top) * DABS.H / r.height }; };
     const opts = { passive: false }; // whole window, so the letterbox bars work too; preventDefault stops scrolling, zoom and emulated mouse events
     window.addEventListener('touchstart', (e) => { e.preventDefault(); I.setDevice('touch'); if (DABS.audio) DABS.audio.init(); for (const t of e.changedTouches) start(t.identifier, pos(t)); }, opts);
