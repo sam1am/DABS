@@ -31,7 +31,7 @@ try {
   until(() => game.sceneName === 'story', 200); if (game.sceneName === 'story') { for (let k = 0; k < 12; k++) { press('Space'); step(5); } until(() => game.sceneName !== 'story', 400, () => { press('Space'); }); }
   log('after story: ' + game.sceneName);
   // HQ: deploy
-  goto('hq', {}); step(10); press('KeyE'); until(() => game.sceneName !== 'hq', 300, (i) => { if (i % 40 === 0) press('Space'); }); log('after deploy: ' + game.sceneName);
+  goto('hq', {}); step(10); press('Enter'); until(() => game.sceneName !== 'hq', 300, (i) => { if (i % 40 === 0) press('Space'); }); log('after deploy: ' + game.sceneName);
   if (game.sceneName === 'story') until(() => game.sceneName === 'city', 600, () => press('Space'));
   log('city? ' + game.sceneName);
   // City: fly right for a while, fire cannon, then over bar 0
@@ -89,7 +89,18 @@ try {
   goto('boss', { district: 5, entry: 'good', airship: true }); const fb = scene(); for (let k = 0; k < 4; k++) { press('Space'); step(10); } fb.boss.hp = 2; ok = step(600, (i) => { fb.agent.x = fb.boss.x - 160; fb.agent.facing = 1; if (i % 8 === 0) press('Space'); }); log('final boss ok=' + ok + ' state=' + fb.boss.state); until(() => game.sceneName === 'results', 600); step(300); press('Digit1'); until(() => game.sceneName === 'story', 200); until(() => game.sceneName === 'ending', 800, () => press('Space')); log('ending? ' + game.sceneName + ' won=' + S.profile.wonGame); step(600); press('Space'); step(120); log('after ending: ' + game.sceneName);
   goto('title', {}); step(60); press('Digit3'); step(10); press('Escape'); step(10); press('Digit4'); step(10); press('Escape'); step(10);
   // pause menu
-  goto('city', { district: 0 }); step(10); press('Escape'); step(10); log('paused=' + game.paused); press('Digit3'); step(5); press('Digit1'); step(5); log('paused=' + game.paused);
+  goto('city', { district: 0 }); step(10); press('Escape'); step(10); log('paused=' + game.paused); press('Digit2'); step(5); press('Escape'); step(5); log('paused=' + game.paused);
+  // gamepad: fake a standard-mapping pad and drive menus / pause / bar panel with it
+  const pad = { id: 'Xbox Wireless Controller', connected: true, mapping: 'standard', axes: [0, 0, 0, 0], buttons: Array.from({ length: 17 }, () => ({ pressed: false, value: 0 })) };
+  window.navigator.getGamepads = () => [pad];
+  const tap = (i) => { pad.buttons[i].pressed = true; step(1); pad.buttons[i].pressed = false; step(1); };
+  goto('city', { district: 0 }); step(5); tap(9); log('pad start paused=' + game.paused + ' device=' + I.device + ' label(fire)=' + I.label('fire')); tap(1); log('pad B paused=' + game.paused);
+  goto('title', {}); step(10); pad.axes[1] = 1; step(2); pad.axes[1] = 0; step(2); log('pad stick menu index=' + scene().menu.index);
+  goto('hq', {}); step(5); tap(5); log('pad RB tab=' + scene().tab); tap(4); log('pad LB tab=' + scene().tab); tap(1); step(60); log('pad B from hq -> ' + game.sceneName);
+  goto('bar', { district: 0, bar: 0, entry: 'good' }); const pb = scene(); step(400); pb.agent.x = pb.exit.x; step(2); tap(0); step(1); log('pad A panel=' + !!pb.panel + ' target=' + (pb.panel && pb.panel.target.kind)); tap(1); log('pad B panel=' + !!pb.panel + ' paused=' + game.paused);
+  const pp = pb.patrons.find(p => p.state === 'idle'); pb.openPanel({ kind: 'patron', p: pp }); step(2); if (pb.panel) { pb.panel.mode = 'cite'; pb.buildPanelMenu(); step(1); tap(1); log('pad B from cite -> mode=' + (pb.panel && pb.panel.mode)); tap(1); log('pad B again -> panel=' + !!pb.panel); }
+  I.setDevice('kb'); log('kb label(back)=' + I.label('back') + ' fmt=' + I.fmt('{fire} / {interact}'));
+  window.navigator.getGamepads = () => [];
   log('achievements=' + Object.keys(S.profile.achievements).join(','));
   log('SIM DONE errors=' + LOG.filter(l => l.startsWith('ERROR') || l.startsWith('FRAME ERROR')).length);
 } catch (e) { log('SIM EXCEPTION: ' + e.message + ' :: ' + (e.stack || e)); }

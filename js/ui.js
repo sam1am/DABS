@@ -20,13 +20,27 @@
     if (frac > 0) { ctx.save(); G.roundRect(ctx, x, y, w, h, h / 2); ctx.clip(); const g = ctx.createLinearGradient(x, y, x, y + h); g.addColorStop(0, U.shade(color, 0.25)); g.addColorStop(1, U.shade(color, -0.2)); ctx.fillStyle = g; ctx.fillRect(x, y, w * frac, h); ctx.fillStyle = 'rgba(255,255,255,0.25)'; ctx.fillRect(x, y, w * frac, h * 0.4); ctx.restore(); }
     if (label) G.text(ctx, label, x + w / 2, y + h / 2 + 1, { size: o.size || Math.max(11, h - 6), color: '#fff', align: 'center', baseline: 'middle', shadow: true });
   };
-  UI.keycap = function (ctx, x, y, key, o) { o = o || {}; const size = o.size || 14; ctx.save(); ctx.font = `900 ${size}px ${G.BODY_FONT}`; const w = Math.max(size * 1.7, ctx.measureText(key).width + 12); G.fillRound(ctx, x, y - size * 0.95, w, size * 1.6, 5, o.fill || '#e5e7eb', G.OUT, 2); ctx.fillStyle = G.OUT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(key, x + w / 2, y - size * 0.15); ctx.restore(); return w; };
-  UI.hint = function (ctx, x, y, key, label, o) { o = o || {}; const w = UI.keycap(ctx, x, y, key, o); G.text(ctx, label, x + w + 8, y, { size: o.size || 15, color: o.color || '#e5e7eb', shadow: true }); return w + 12 + G.measure(ctx, label, { size: o.size || 15 }); };
-  UI.hintsRow = function (ctx, x, y, hints, o) { let cx = x; for (const h of hints) { cx += UI.hint(ctx, cx, y, h[0], h[1], o) + 14; } };
+  // keycap: light key on keyboard; on a gamepad, coloured face buttons (A/B/X/Y, ✕○□△) or a dark pill (LB, START, ...)
+  UI.keycap = function (ctx, x, y, key, o) {
+    o = o || {}; const size = o.size || 14; const pad = I.usingPad(); const face = I.faceColor(key); const h = size * 1.6;
+    ctx.save(); ctx.font = `900 ${size}px ${G.BODY_FONT}`; const w = face ? h : Math.max(size * 1.7, ctx.measureText(key).width + (pad ? 16 : 12));
+    if (!o.measure) {
+      if (face) G.circle(ctx, x + w / 2, y - size * 0.15, h / 2, face, G.OUT, 2); else G.fillRound(ctx, x, y - size * 0.95, w, h, pad ? h / 2 : 5, pad ? '#1f2937' : (o.fill || '#e5e7eb'), pad ? '#9ca3af' : G.OUT, 2);
+      ctx.fillStyle = pad ? '#fff' : G.OUT; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(key, x + w / 2, y - size * 0.15);
+    }
+    ctx.restore(); return w;
+  };
+  // hint: keycap for an action (resolved per device via I.label) followed by a label; returns its width
+  UI.hint = function (ctx, x, y, act, label, o) { o = o || {}; const size = o.size || 15; const w = UI.keycap(ctx, x, y, I.label(act), o); if (!o.measure) G.text(ctx, label, x + w + 8, y, { size, color: o.color || '#e5e7eb', shadow: true }); return w + 8 + G.measure(ctx, label, { size }); };
+  // hintsRow: [[action, label], ...]; o.align 'left' (default) | 'center' | 'right' anchors the row at x; returns the row width
+  UI.hintsRow = function (ctx, x, y, hints, o) {
+    o = o || {}; const gap = 18; let w = 0; for (const h of hints) w += UI.hint(ctx, 0, y, h[0], h[1], Object.assign({}, o, { measure: true })) + gap; w = Math.max(0, w - gap);
+    let cx = o.align === 'center' ? x - w / 2 : o.align === 'right' ? x - w : x; if (!o.measure) for (const h of hints) cx += UI.hint(ctx, cx, y, h[0], h[1], o) + gap; return w;
+  };
 
   UI.Button = class {
     constructor(x, y, w, h, label, onClick, o) { this.x = x; this.y = y; this.w = w; this.h = h; this.label = label; this.onClick = onClick; this.o = o || {}; this.hover = false; this.enabled = true; this.visible = true; this.hot = false; this.pressT = 0; }
-    update(dt) { if (!this.visible || !this.enabled) { this.hover = false; return false; } const m = I.mouse; const wasHover = this.hover; this.hover = U.rectHit(m.x, m.y, this); if (this.hover && !wasHover && m.moved) DABS.audio.sfx('hover'); if (this.pressT > 0) this.pressT -= dt; if (this.hover && m.clicked) { this.press(); return true; } return false; }
+    update(dt) { if (!this.visible || !this.enabled) { this.hover = false; return false; } const m = I.mouse; const wasHover = this.hover; this.hover = !I.usingPad() && U.rectHit(m.x, m.y, this); if (this.hover && !wasHover && m.moved) DABS.audio.sfx('hover'); if (this.pressT > 0) this.pressT -= dt; if (this.hover && m.clicked) { this.press(); return true; } return false; }
     press() { this.pressT = 0.15; DABS.audio.sfx(this.o.sfx || 'click'); if (this.onClick) this.onClick(this); }
     draw(ctx, t) {
       if (!this.visible) return; ctx.save(); const hot = this.hover || this.hot; const en = this.enabled;
@@ -35,23 +49,32 @@
       if (hot && en) { ctx.shadowColor = this.o.glow || '#f5c542'; ctx.shadowBlur = 18; }
       G.roundRect(ctx, 0, 0, this.w, this.h, this.o.radius || 10); ctx.fillStyle = en ? g : '#3a3f4f'; ctx.fill(); ctx.shadowBlur = 0; ctx.lineWidth = 2.5; ctx.strokeStyle = en ? (hot ? '#ffe28a' : (this.o.stroke || '#f5c542')) : '#555b6e'; ctx.stroke();
       const sz = this.o.size || Math.min(26, this.h * 0.5); let tx = this.w / 2; let align = 'center';
-      if (this.o.key) { const kw = UI.keycap(ctx, 12, this.h / 2 + sz * 0.3, this.o.key, { size: sz * 0.7 }); tx = 12 + kw + 12; align = 'left'; }
+      // o.act: an action whose button is shown on any device (e.g. 'back'); o.key: a keyboard-only shortcut, hidden on gamepad
+      const cap = this.o.act ? I.label(this.o.act) : (this.o.key && !I.usingPad()) ? this.o.key : null;
+      if (cap) { const kw = UI.keycap(ctx, 12, this.h / 2 + sz * 0.3, cap, { size: sz * 0.7 }); tx = 12 + kw + 12; align = 'left'; }
       G.text(ctx, this.label, tx, this.h / 2 + sz * 0.36, { size: sz, color: en ? (this.o.textColor || '#fff') : '#8a8fa3', align, font: this.o.font || 'title', shadow: true, maxWidth: this.w - tx - (this.o.sub ? 90 : 14) - (align === 'center' ? (this.w / 2 - tx) : 0) });
       if (this.o.sub) G.text(ctx, this.o.sub, this.w - 12, this.h / 2 + 6, { size: 14, color: '#fde68a', align: 'right' });
       ctx.restore();
     }
   };
 
-  UI.Menu = class { // keyboard + mouse vertical list of buttons
-    constructor(buttons) { this.buttons = buttons; this.index = 0; this.setHot(); }
+  // Menu: keyboard / gamepad / mouse list of buttons. o.row: laid out horizontally; o.cols: grid with that many columns.
+  // Buttons with o.act fire on that action (e.g. act 'back' = Esc / B everywhere); o.nav === false keeps a button out of arrow navigation.
+  UI.Menu = class {
+    constructor(buttons, o) { this.buttons = buttons; this.o = o || {}; this.index = 0; this.navMoved = false; this.setHot(); }
     setHot() { this.buttons.forEach((b, i) => b.hot = (i === this.index)); }
+    navigable(b) { return b && b.enabled && b.visible && b.o.nav !== false; }
+    step(d, wrap) { const n = this.buttons.length; let i = this.index; for (let k = 0; k < n; k++) { i += d; if (wrap) i = (i + n) % n; else if (i < 0 || i >= n) return false; if (this.navigable(this.buttons[i])) { this.index = i; return true; } } return false; }
     update(dt) {
       let clicked = false; this.buttons.forEach((b) => { if (b.update(dt)) clicked = true; });
       if (I.mouse.moved) { const hi = this.buttons.findIndex(b => b.hover && b.enabled); if (hi >= 0) { this.index = hi; this.setHot(); } }
-      const n = this.buttons.length; let moved = false;
-      if (I.justPressed('down')) { for (let k = 0; k < n; k++) { this.index = (this.index + 1) % n; if (this.buttons[this.index].enabled && this.buttons[this.index].visible) break; } moved = true; }
-      if (I.justPressed('up')) { for (let k = 0; k < n; k++) { this.index = (this.index - 1 + n) % n; if (this.buttons[this.index].enabled && this.buttons[this.index].visible) break; } moved = true; }
-      if (moved) { DABS.audio.sfx('hover'); this.setHot(); }
+      const cols = this.o.cols || 1, grid = cols > 1; let moved = false;
+      if (I.justPressed('down')) moved = this.step(grid ? cols : 1, !grid) || moved;
+      if (I.justPressed('up')) moved = this.step(grid ? -cols : -1, !grid) || moved;
+      if ((grid || this.o.row) && I.justPressed('right')) moved = this.step(1, !grid) || moved;
+      if ((grid || this.o.row) && I.justPressed('left')) moved = this.step(-1, !grid) || moved;
+      this.navMoved = moved; if (moved) { DABS.audio.sfx('hover'); this.setHot(); }
+      if (!clicked) { const b = this.buttons.find(bb => bb.o.act && bb.o.act !== 'confirm' && bb.enabled && bb.visible && I.justPressed(bb.o.act)); if (b) { b.press(); clicked = true; } }
       if (!clicked && (I.justPressed('confirm'))) { const b = this.buttons[this.index]; if (b && b.enabled && b.visible) { b.press(); clicked = true; } }
       const d = I.digit(); if (!clicked && d) { const b = this.buttons.find(bb => bb.o.key === String(d)); if (b && b.enabled && b.visible) { b.press(); clicked = true; } }
       return clicked;
@@ -85,8 +108,9 @@
   UI.Dialog = class {
     constructor(lines, onDone) { this.lines = lines; this.i = 0; this.shown = 0; this.onDone = onDone; this.done = false; this.t = 0; this.speed = 55; }
     get line() { return this.lines[this.i]; }
+    get text() { return I.fmt(this.line.text); }
     update(dt) {
-      if (this.done) return; this.t += dt; const L = this.line; const full = L.text.length;
+      if (this.done) return; this.t += dt; const full = this.text.length;
       if (this.shown < full) { const prev = this.shown; this.shown = Math.min(full, this.shown + this.speed * dt); if (Math.floor(this.shown / 3) !== Math.floor(prev / 3)) DABS.audio.sfx('tick'); }
       const adv = I.justPressed('confirm') || I.justPressed('action') || I.mouse.clicked;
       if (adv) { if (this.shown < full) this.shown = full; else { this.i++; this.shown = 0; if (this.i >= this.lines.length) { this.done = true; if (this.onDone) this.onDone(); } else DABS.audio.sfx('click'); } }
@@ -98,10 +122,10 @@
       UI.panel(ctx, x, y, w, h, { stroke: ch.color || '#f5c542' });
       G.drawPortrait(ctx, x + 16, y + 16, 150, h - 32, ch.look, { mood: L.mood || ch.mood || 'neutral', t: this.t, border: ch.color || '#f5c542', holding: ch.holding, bg1: ch.bg1, bg2: ch.bg2 });
       G.text(ctx, L.name || ch.name, x + 190, y + 44, { size: 26, color: ch.color || '#f5c542', font: 'title', glow: 6 });
-      const shown = L.text.slice(0, Math.floor(this.shown));
+      const text = this.text; const shown = text.slice(0, Math.floor(this.shown));
       UI.drawWrapped(ctx, shown, x + 190, y + 80, w - 220, 27, { size: 20, color: '#f1f5f9', weight: '400' });
-      if (this.shown >= L.text.length) { const b = 0.5 + 0.5 * Math.sin(this.t * 6); G.text(ctx, '▼', x + w - 30, y + h - 18, { size: 18, color: '#f5c542', align: 'center', alpha: b }); }
-      G.text(ctx, `${this.i + 1}/${this.lines.length}   [Space/Click] next   [Esc] skip`, x + w - 20, y + 30, { size: 13, color: 'rgba(255,255,255,0.5)', align: 'right' });
+      if (this.shown >= text.length) { const b = 0.5 + 0.5 * Math.sin(this.t * 6); G.text(ctx, '▼', x + w - 30, y + h - 18, { size: 18, color: '#f5c542', align: 'center', alpha: b }); }
+      ctx.save(); ctx.globalAlpha = 0.6; const hw = UI.hintsRow(ctx, x + w - 20, y + 30, [['confirm', 'next'], ['back', 'skip']], { size: 12, align: 'right' }); G.text(ctx, `${this.i + 1}/${this.lines.length}`, x + w - 38 - hw, y + 30, { size: 13, color: '#fff', align: 'right' }); ctx.restore();
     }
   };
 

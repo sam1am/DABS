@@ -13,8 +13,9 @@
   };
   const KIND_NAMES = { tire: 'a rolling tire', keg: 'a rolling keg', handcart: 'a runaway handcart', keys: 'a flying key fob', floppy: 'a floppy disk', orb: 'a glowing orb', mug: 'a flying mug', barrel: 'a brine barrel', monitor: 'a flying CRT monitor', cork: 'a cork', cow: 'an abducted cow', can: 'a falling can', drop: 'a drop of Valley Tan', bottle: 'a falling bottle' };
   class BossScene {
+    get pausable() { return !this.boss || this.boss.state !== 'intro'; } // Esc skips the intro dialog instead
     constructor(game, params) {
-      this.game = game; this.t = 0; this.pausable = true; this.di = params.district; this.D = D.DISTRICTS[this.di]; this.B = this.D.boss; this.ch = D.CHARACTERS[this.B.id]; this.airship = !!params.airship;
+      this.game = game; this.t = 0; this.di = params.district; this.D = D.DISTRICTS[this.di]; this.B = this.D.boss; this.ch = D.CHARACTERS[this.B.id]; this.airship = !!params.airship;
       this.agent = { x: 220, y: FLOOR, vy: 0, vx: 0, facing: 1, hearts: 3 + S.upgrade('vest'), maxHearts: 3 + S.upgrade('vest'), inv: 0, throwCd: 0, pose: 'idle', walk: 0, walking: false, onGround: true, throwT: 0 };
       this.boss = { x: 980, y: FLOOR, vy: 0, hp: this.B.hp, maxHp: this.B.hp, dir: -1, phase: 0, t: 0, attackT: 1.8, flash: 0, state: 'card', walk: 0, walking: false, pose: 'idle', mood: this.ch.mood || 'angry', holding: this.ch.holding || null, floatY: 0, bubbles: [], hopT: 2, bubble: null, sip: 0, tele: 0 };
       this.hazards = []; this.cites = []; this.parts = new G.Particles(); this.shake = 0; this.blackout = 0; this.dmgTaken = 0; this.timer = 0; this.score = 0; this.slow = 1; this.deadT = 0; this.flash = 0; this.warnings = [];
@@ -200,7 +201,7 @@
       G.text(ctx, this.B.title, 50, 528, { size: 24, color: '#111827', weight: '900', maxWidth: 740 });
       ctx.restore();
       if (c < 0.15) { ctx.fillStyle = `rgba(255,255,255,${0.85 * (1 - c / 0.15)})`; ctx.fillRect(0, 0, DABS.W, DABS.H); }
-      if (c > 0.8) G.text(ctx, '[Space] continue', DABS.W - 24, DABS.H - 20, { size: 14, color: 'rgba(255,255,255,0.6)', align: 'right' });
+      if (c > 0.8) { ctx.save(); ctx.globalAlpha = 0.65; UI.hintsRow(ctx, DABS.W - 24, DABS.H - 20, [['confirm', 'continue']], { size: 14, align: 'right' }); ctx.restore(); }
     }
     drawFloppy(ctx, x, y, rot) { ctx.save(); ctx.translate(x, y); ctx.rotate(rot || 0); G.fillRound(ctx, -13, -13, 26, 26, 2, '#1f2937', G.OUT, 2); ctx.fillStyle = '#cbd5e1'; ctx.fillRect(-7, -13, 14, 9); ctx.fillStyle = '#f8fafc'; ctx.fillRect(-9, 1, 18, 11); ctx.restore(); }
     drawArena(ctx, t) {
@@ -234,7 +235,7 @@
       for (let i = 0; i < a.maxHearts; i++) G.heart(ctx, 36 + i * 34, 40, 11, i < a.hearts ? '#ef4444' : 'rgba(255,255,255,0.15)', G.OUT);
       UI.panel(ctx, DABS.W - 214, 12, 200, 54, { shadow: false, fill: 'rgba(0,0,0,0.6)', stroke: 'rgba(255,255,255,0.25)' });
       G.text(ctx, `SCORE ${U.fmtNum(this.score)}`, DABS.W - 24, 36, { size: 20, color: '#fde68a', align: 'right', font: 'title' }); G.text(ctx, `${this.timer.toFixed(1)}s   dmg ${this.dmgTaken}`, DABS.W - 24, 56, { size: 13, color: '#cbd5e1', align: 'right' });
-      if (this.hint > 0 && b.state === 'fight') { ctx.save(); ctx.globalAlpha = Math.min(1, this.hint); UI.hintsRow(ctx, 20, DABS.H - 20, [['A/D', 'move'], ['W', 'jump'], ['SPACE', 'throw citation']], { size: 14 }); ctx.restore(); }
+      if (this.hint > 0 && b.state === 'fight') { ctx.save(); ctx.globalAlpha = Math.min(1, this.hint); UI.hintsRow(ctx, 20, DABS.H - 20, [['move', 'move'], ['jump', 'jump'], ['fire', 'throw citation']], { size: 14 }); ctx.restore(); }
     }
   }
   DABS.scenes.boss = BossScene;
